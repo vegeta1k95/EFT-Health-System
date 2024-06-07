@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+	<string id="efth_head"><text>ГОЛОВА</text></string>
+	<string id="efth_torso"><text>ГРУДНАЯ КЛЕТКА</text></string>
+	<string id="efth_stomach"><text>ЖИВОТ</text></string>
+	<string id="efth_arm_left"><text>ЛЕВАЯ РУКА</text></string>
+	<string id="efth_arm_right"><text>ПРАВАЯ РУКА</text></string>
+	<string id="efth_leg_left"><text>ЛЕВАЯ НОГА</text></string>
+	<string id="efth_leg_right"><text>ПРАВАЯ НОГА</text></string>
+
+</string_table>

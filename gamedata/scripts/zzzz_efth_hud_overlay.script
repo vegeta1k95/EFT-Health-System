@@ -1,0 +1,313 @@
+local InitStatic = zzzz_efth_hud_common.InitStatic
+local InitTextWnd = zzzz_efth_hud_common.InitTextWnd
+local CorrectRatio = zzzz_efth_hud_common.CorrectRatio
+local GetConfig = zzz_efth_mcm.GetConfig
+
+local spairs = zzz_efth_lua.spairs
+
+local ClassUI = class
+local class = zzz_efth_lua.class
+local enum = zzz_efth_lua.enum
+
+-- Main overlay HUD instance
+HUD = nil
+
+-- =============================== Constants ===================================
+
+-- Overlay modes
+enum "EHudOverlayMode"
+{
+	Visible   = 0,		-- 0 - Always visible
+	Automatic = 1,		-- 1 - Automatic
+	Hidden    = 2,		-- 2 - Never visible
+}
+
+-- Coloring modes
+enum "EHudOverlayColoring" 
+{
+	[0] = Colors.OVERLAY_WHITE,
+	[1] = Colors.OVERLAY_GREEN,
+}
+
+--==============================================================================
+--======================= Class "CUIBodyOverlay" ===============================
+--==============================================================================
+--[[
+	This is the HUD overlay that appeads on the top-left corner of the screen.
+	Contains color-coded bodyparts + status effects list. 
+
+	Status effects list shown TOTAL amount of effects on all limbs.
+	
+	Overlay HUD has special AUTOMATIC visibility mode: HUD becomes hidden
+	if no essential updates arrived in `hud_autohide_delay` interval.
+--]]
+
+ClassUI "CUIBodyOverlay" (CUIScriptWnd)
+
+function CUIBodyOverlay:__init() super()
+
+	-- Config Constants
+	self.hud_visibility	  	= GetConfig("overlay_visibility")
+	self.hud_autohide_delay = GetConfig("overlay_autohide_delay") * 1000
+	self.hud_coloring 		= EHudOverlayColoring[GetConfig("overlay_coloring")]
+	self.hud_offset_x		= GetConfig("overlay_offset_x")
+	self.hud_offset_y		= GetConfig("overlay_offset_y")
+
+	-- Last HUD update time
+	self.last_update = 0
+	
+	-- Update timer
+	self.continious_update = false
+	
+	-- Effects holder control
+	self.effects_list = nil
+	
+	-- Limbs controls
+	self.limbs = {}
+	
+	-- Initialize
+	self:InitControls()
+	
+	-- Update visibility
+	self:UpdateVisibility()
+	
+	-- Fetch all the recent body info
+	self:OnLoaded()
+	
+	-- Register callbacks
+	RegisterScriptCallback("efth_on_health_changed", function(limb) self:OnHealthChanged(limb) end)
+	RegisterScriptCallback("efth_on_buff_added", function(buff) self:OnBuffChanged(buff, true) end)
+	RegisterScriptCallback("efth_on_buff_removed", function(buff) self:OnBuffChanged(buff, false) end)
+	RegisterScriptCallback("efth_on_buff_expiring", function(buff) self:OnBuffExpiring(buff) end)
+end
+
+function CUIBodyOverlay:__finalize()
+	UnregisterScriptCallback("efth_on_health_changed")
+	UnregisterScriptCallback("efth_on_buff_added")
+	UnregisterScriptCallback("efth_on_buff_removed")
+	UnregisterScriptCallback("efth_on_buff_expiring")
+end
+
+function CUIBodyOverlay:InitControls()
+	
+	-- Load limbs HUD overlay xml
+	local xml = CScriptXmlInit()
+	xml:ParseFile("ui_efth_hud_overlay.xml")
+	
+	-- Initialize background layout
+	self.background = xml:InitStatic("overlay_bg", self)
+	local offset_x = (device().width - self.background:GetWidth() - 30) * self.hud_offset_x
+	local offset_y = (device().height - self.background:GetHeight()) * self.hud_offset_y
+	self.background:SetWndPos(vector2():set(offset_x, offset_y))
+	utils_xml.correct_ratio(self.background)
+	
+	-- Attach limbs controls
+	for name, limb in pairs(Body.limbs) do
+	
+		-- Iterate and init all limbs' statics
+		self.limbs[name] = InitStatic(xml, "overlay_" .. name, self.background)
+		self.limbs[name]:SetTextureColor(self.hud_coloring:GetInt())
+		
+	end
+	
+	-- Attach effects list control
+	self.effects_list = CUIEffectsList(false, self.background, 2)
+	self.effects_list:Refresh()
+	
+	-- Align to outside of top-right corner
+	local posX = self.background:GetWidth()
+	local posY = self.effects_list:GetMinHeight()
+	self.effects_list:SetPosition(posX, posY)
+	
+end
+
+function CUIBodyOverlay:OnLoaded()
+	
+	-- Update each limb's HP
+	for name, limb in pairs(Body.limbs) do
+		self:OnHealthChanged(limb)
+	end
+	
+	-- Update all buffs 
+	for buff_id, buff in pairs(Body.buffs.active.queue) do
+		
+		-- Only interested in buffs with icons
+		if (buff.ICON) then
+		
+			local effect = self.effects_list.effects[buff.ICON]
+			effect:IncCounter()
+			
+			-- If buff is expiring - mark it for continious updates
+			if (buff.IS_DURATIONAL) and (buff:IsExpiring()) then
+				effect.expiring = true
+				self.continious_update = true
+			end
+			
+		end
+		
+	end
+	
+	-- Update positions
+	self.effects_list:Refresh()
+	
+	-- Essential update - increase visibility timer
+	self.last_update = time_global()
+	self:Show(true)
+	
+end
+
+function CUIBodyOverlay:OnHealthChanged(limb)
+
+	if (limb:IsDestroyed()) then
+		-- Destroyed limbs (0%) - not shown
+		self.limbs[limb.name]:SetTextureColor(Colors.TRANSPARENT:GetInt())
+	else
+		-- Healthy limbs - between RED and WHITE depending on %HP
+		self.limbs[limb.name]:SetTextureColor(Colors.LerpHSV(
+			Colors.OVERLAY_RED, self.hud_coloring, limb:GetPercentHP()):GetInt())
+	end
+	
+	-- Essential update - increase visibility timer
+	self.last_update = time_global()
+	self:Show(true)
+	
+end
+
+function CUIBodyOverlay:OnBuffExpiring(buff)
+	if (buff.ICON) then
+		self.effects_list.effects[buff.ICON].expiring = true
+		self.continious_update = true
+	end
+end
+
+function CUIBodyOverlay:OnBuffChanged(buff, added)
+	if (buff.ICON) then
+
+		local effect = self.effects_list.effects[buff.ICON]
+		
+		-- Refresh transparency
+		effect:SetTransparency(1)
+		
+		-- Change counter
+		if (added) then
+			effect:IncCounter()
+		else
+			effect:DecCounter()
+		end
+			
+		-- Refresh update flag
+		effect.expiring = (buff.IS_DURATIONAL) and (buff:IsExpiring())
+		self.continious_update = (buff.IS_DURATIONAL) and (buff:IsExpiring())
+		
+		-- Refresh list
+		self.effects_list:Refresh()
+		
+		-- Essential update - increase visibility timer
+		self.last_update = time_global()
+		self:Show(true)
+	
+	end
+	
+end
+
+function CUIBodyOverlay:UpdateVisibility()
+
+	-- Check for overlay mode
+	if (self.hud_visibility == EHudOverlayMode.Hidden) or (not main_hud_shown()) then
+	
+		-- If HUD visible - hide, if hidden - do nothing
+		if (self:IsShown()) then
+			self:Show(false)
+		else
+			return
+		end
+	
+	elseif (self.hud_visibility == EHudOverlayMode.Visible) then
+	
+		if (not self:IsShown()) then
+			self:Show(true)
+		end
+		
+	elseif (self.hud_visibility == EHudOverlayMode.Automatic) then
+		
+		if (self:IsShown()) then
+		
+			-- Hide HUD after N seconds of no essential updates
+			if (time_global() - self.last_update > self.hud_autohide_delay) then
+				self:Show(false)
+				return
+			end
+		
+		-- HUD is hidden, no need to update
+		else
+			return
+		end
+	end
+	
+end
+
+function CUIBodyOverlay:Update()
+
+	-- Update window visibility
+	self:UpdateVisibility()
+	
+	-- No continious updates needed
+	if (not self.continious_update) or (not self:IsShown()) then
+		return
+	end
+	
+	-- Alpha percent
+	local percent = (math.sin(3 * time_global() / 1000) + 1) * 0.5
+	
+	self.continious_update = false
+	
+	for name, effect in pairs(self.effects_list.effects) do
+		if (effect:IsShown() and effect.expiring) then
+			effect:SetTransparency(percent)
+			self.continious_update = true
+		end
+	end
+	
+	CUIScriptWnd.Update(self)
+end
+
+function ActorOnFirstUpdate()
+	ShowHUD()
+end
+
+function ActorOnNetDestroy()
+	HideHUD()
+end
+
+function ShowHUD()
+	if (HUD == nil) then
+		HUD = CUIBodyOverlay()
+		get_hud():AddDialogToRender(HUD)
+	end
+end
+
+function HideHUD()
+	if (HUD) then
+		get_hud():RemoveDialogToRender(HUD)
+		HUD = nil
+	end
+end
+
+local oldSleepCallback = ui_sleep_dialog.dream_callback2
+ui_sleep_dialog.dream_callback2 = function()
+	oldSleepCallback()
+	if (HUD ~= nil) then
+		HUD:UpdateVisibility()
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update", ActorOnFirstUpdate)
+	RegisterScriptCallback("actor_on_net_destroy", ActorOnNetDestroy)
+	
+	-- When GUI (inventory, dialog, etc) is UP, HUD is DOWN
+	-- When GUI (inventroy, dialog, etc) is DOWN, HUD is UP
+	RegisterScriptCallback("GUI_on_show", HideHUD)
+	RegisterScriptCallback("GUI_on_hide", ShowHUD)
+	
+end

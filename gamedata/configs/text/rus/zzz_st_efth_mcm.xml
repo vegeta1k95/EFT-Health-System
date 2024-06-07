@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	
+	<string id="ui_mcm_menu_efth"><text>EFT Health</text></string>
+	<string id="ui_mcm_efth_title"><text>EFT Health</text></string>
+	
+	<string id="ui_mcm_efth_general_damage_multiplier"><text>Множитель урона</text></string>
+	<string id="ui_mcm_efth_general_campfire_heal"><text>Лечение от костров</text></string>
+	
+	<string id="ui_mcm_efth_inv_bg_alpha"><text>Прозрачность фона</text></string>
+	<string id="ui_mcm_efth_inv_show_conditions"><text>Показатели здоровья/жажды/голода</text></string>
+	
+	<string id="ui_mcm_efth_overlay_visibility"><text>Видимость</text></string>
+	<string id="ui_mcm_lst_efth_visible"><text>Всегда</text></string>
+	<string id="ui_mcm_lst_efth_automatic"><text>Автоматически</text></string>
+	<string id="ui_mcm_lst_efth_hidden"><text>Никогда</text></string>
+	
+	<string id="ui_mcm_efth_overlay_autohide_delay"><text>Скрывать после (сек.)</text></string>
+	
+	<string id="ui_mcm_efth_overlay_coloring"><text>Расцветка</text></string>
+	<string id="ui_mcm_lst_efth_monotonic"><text>Монотонная</text></string>
+	<string id="ui_mcm_lst_efth_colorful"><text>Цветная</text></string>
+	
+	<string id="ui_mcm_efth_overlay_offset_x"><text>Положение X</text></string>
+	<string id="ui_mcm_efth_overlay_offset_y"><text>Положение Y</text></string>
+	
+	<string id="ui_mcm_efth_items_names"><text>Показывать имена медикаментов</text></string>
+	<string id="ui_mcm_efth_items_dont_stack"><text>Запретить стак медикаментов</text></string>
+	
+</string_table>

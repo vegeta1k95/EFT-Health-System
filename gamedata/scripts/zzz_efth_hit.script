@@ -1,0 +1,216 @@
+local class = zzz_efth_lua.class
+local enum = zzz_efth_lua.enum
+
+local GetConfig = zzz_efth_mcm.GetConfig
+
+-- ======================= Constants =============================
+
+-- Map of pairs: BONE_ID - LIMB_NAME
+BONE_TO_LIMB = {
+
+	-- 0 - root bone 
+		
+	[14] = "head",		-- bip01_neck
+	[15] = "head",		-- bip01_head
+	[16] = "head",		-- eye_left
+	[17] = "head",		-- eye_right
+	[18] = "head",		-- eyelid_1
+	[19] = "head",		-- jaw_1
+	
+	[13] = "torso",		-- bip01_spine2
+	[20] = "torso",		-- bip01_l_clavicle
+	[33] = "torso",		-- bip01_r_clavicle
+	
+	[1]	 = "stomach",	-- bip01
+	[2]	 = "stomach",	-- bip01_pelvis
+	[11] = "stomach",	-- bip01_spine
+	[12] = "stomach",	-- bip01_spine1
+	[46] = "stomach",	-- bip01_tail
+	
+	[21] = "arm_left",	-- bip01_l_upperarm
+	[22] = "arm_left",	-- bip01_l_forearm
+	[23] = "arm_left",	-- bip01_l_hand
+	[24] = "arm_left",	-- bip01_l_finger0
+	[25] = "arm_left",	-- bip01_l_finger01
+	[26] = "arm_left",	-- bip01_l_finger02
+	[27] = "arm_left",	-- bip01_l_finger1
+	[28] = "arm_left",	-- bip01_l_finger11
+	[29] = "arm_left",	-- bip01_l_finger12
+	[30] = "arm_left",	-- bip01_l_finger2
+	[31] = "arm_left",	-- bip01_l_finger21
+	[32] = "arm_left",	-- bip01_l_finger22
+	
+	[34] = "arm_right",	-- bip01_r_upperarm
+	[35] = "arm_right",	-- bip01_r_forearm
+	[36] = "arm_right",	-- bip01_r_hand
+	[37] = "arm_right",	-- bip01_r_finger0
+	[38] = "arm_right",	-- bip01_r_finger01
+	[39] = "arm_right",	-- bip01_r_finger02
+	[40] = "arm_right",	-- bip01_r_finger1
+	[41] = "arm_right",	-- bip01_r_finger11
+	[42] = "arm_right",	-- bip01_r_finger12
+	[43] = "arm_right",	-- bip01_r_finger2
+	[44] = "arm_right",	-- bip01_r_finger21
+	[45] = "arm_right",	-- bip01_r_finger22
+	
+	[3]  = "leg_left",	-- bip01_l_thigh
+	[4]  = "leg_left",	-- bip01_l_calf
+	[5]  = "leg_left",	-- bip01_l_foot
+	[6]  = "leg_left",	-- bip01_l_toe0
+	
+	[7]  = "leg_right",	-- bip01_r_thigh
+	[8]  = "leg_right",	-- bip01_r_calf
+	[9]  = "leg_right",	-- bip01_r_foot
+	[10] = "leg_right",	-- bip01_r_toe0
+}
+
+--==========================================================================================
+--========================================== Hit detection =================================
+--==========================================================================================
+
+class "CHitType" 
+{
+	__init = function(self, id, prob_bleed, prob_fracture)
+		self.ID = id
+		self.prob_bleed = prob_bleed			-- Probability to cause bleeds (0..1)
+		self.prob_fracture = prob_fracture		-- Probability to cause fracture (0..1)
+	end;
+}
+
+--	Enum mirrors engine hit-types 0-11
+enum "EHitTypes" 
+{
+							--ID,  bleed, fracture
+	Burn 			= CHitType(0,  	 0, 	0), 	-- Fire anomalies
+	Electrical 		= CHitType(1,  	 0, 	0), 	-- Electrical anomalies
+	Chemical 		= CHitType(2,    0, 	0), 	-- Chemical anomalies
+	Radiation 		= CHitType(3,    0, 	0), 	-- Radiation field (!!! THIS IS NOT THE RADIATION TICK DAMAGE !!!)
+	Telepatic 		= CHitType(4,    0, 	0), 	-- Psy attacks / psy fields
+	Wound			= CHitType(5,    0.5,   0.3), 	-- Melee / gravity
+	FireWound		= CHitType(6,    0.3,   0.2), 	-- Bullets
+	Strike			= CHitType(7,    0.3,   0.3), 	-- Melee / gravity
+	Explosion		= CHitType(8,    0.8,   0), 	-- Grenades / explosives
+	Wound_2			= CHitType(9,    1, 	1), 	-- ?
+	LightBurn		= CHitType(10,   0, 	0), 	-- Thermal fields / campfires
+	Unknown			= CHitType(11,   0, 	0), 	-- Dummy type (MAX ENGINE TYPE)
+	Fall			= CHitType(12,   0, 	1), 	-- Fall damage (NON ENGINE TYPE, for convenience)
+	
+	GetByID = function(id)
+		for name, hit_type in pairs(EHitTypes) do
+			if (hit_type.ID == id) then
+				return hit_type
+			end
+		end
+		return EHitTypes.Unknown
+	end;
+}
+
+ANOMALIES_LIMBS = {
+	[EHitTypes.Burn.ID] 		= { "torso", "stomach", "arm_left", "arm_right", "leg_left", "leg_right" },	-- Thermal
+	[EHitTypes.Strike.ID] 		= { "torso", "stomach", "arm_left", "arm_right", "leg_left", "leg_right" },	-- Gravitational
+	[EHitTypes.Wound.ID] 		= { "torso", "stomach", "arm_left", "arm_right", "leg_left", "leg_right" },	-- Gravitational
+	[EHitTypes.Electrical.ID] 	= { "torso", "stomach", "arm_left", "arm_right", "leg_left", "leg_right" },	-- Electrical
+	[EHitTypes.Chemical.ID] 	= { "leg_left", "leg_right" },												-- Chemical
+}
+
+-- Retrieve nearest player's bone to the given NPC.
+-- (^_^) Props to -xcvb- for this function!
+function GetNearestActorBoneID(npc)
+	
+	local head_bone_name = ini_sys:r_string_ex(npc:section(), "bone_head")
+	local head_bone_pos = head_bone_name and vector():set(npc:bone_position(head_bone_name))
+	
+	if (not head_bone_pos) then 
+		return 
+	end
+
+	local min_dist = 99
+	local picked_bone_id
+	
+	for bone_id, _ in pairs(hitboxes) do
+		local bone_name = db.actor:bone_name(bone_id)
+		local bone_pos = bone_name and vector():set(db.actor:bone_position(bone_name))
+		local dist = bone_pos and head_bone_pos:distance_to(bone_pos)
+		if (dist) and (dist < min_dist) then
+			min_dist = dist
+			picked_bone_id = bone_id
+		end
+	end
+
+	return picked_bone_id
+end
+
+function CBody:OnHit(hit, bone_id)
+
+	-- No bone ID, can skip
+	if (bone_id == 65535) then
+		return
+	end
+	
+	-- This is called when acquiring radiation (field), not when radiation damage tick.
+	-- Since acquiring radiation is not harmful - we can skip this. 
+	if (hit.type == EHitTypes.Radiation.ID) then
+		return	
+	end
+	
+	local damage = hit.power * 100	* GetConfig("general_damage_multiplier")	-- Convert float damage range to normal damage range * damage modifier
+	local source = hit.draftsman											    -- Who did this
+	local hit_type = EHitTypes.GetByID(hit.type)
+	local limb_name
+	
+	-- Fall damage - distribute halved damage to each leg
+	if (source) and (source:id() == 0) and (hit.type == EHitTypes.Strike.ID) then
+		self:ApplyDamage(self.limbs.leg_left, damage / 2, EHitTypes.Fall)
+		self:ApplyDamage(self.limbs.leg_right, damage / 2, EHitTypes.Fall)
+		return
+	end
+	
+	-- Anomaly hit our root bone - damage random limb
+	if (bone_id == 0) and (source) and (IsAnomaly(source)) then
+		-- Choose random limb from possible for this anomaly type
+		limb_name = ChooseRandom(ANOMALIES_LIMBS[hit.type])
+	end
+	
+	-- Monster hit our root bone - try instead to get nearest player's bone to it
+	if (bone_id == 0) and (source) and (IsMonster(source)) then
+		bone_id = GetNearestActorBoneID(source)
+	end
+	
+	-- Get limb by bone ID
+	if (not limb_name) then
+		limb_name = BONE_TO_LIMB[bone_id]
+	end
+	
+	-- Known bone hit - apply damage
+	if (limb_name) then
+		self:ApplyDamage(self.limbs[limb_name], damage, hit_type)
+	-- Unknown bone hit - chose random limb from arms / torso
+	else
+		local rand = math.random(1,3)
+		if rand == 1 then
+			self:ApplyDamage(self.limbs.torso, damage, hit_type)
+		elseif rand == 2 then
+			self:ApplyDamage(self.limbs.arm_left, damage, hit_type)
+		else
+			self:ApplyDamage(self.limbs.arm_right, damage, hit_type)
+		end
+	end
+	
+end
+
+-- ======================== CALLBACKS ================================
+
+function ActorOnBeforeHitAfterCalcs(hit, target, bone_id)
+
+	-- If not an actor - not interested.
+	if (target:id() ~= db.actor:id()) then
+		return
+	end
+
+	Body:OnHit(hit, bone_id)
+end
+
+
+function on_game_start()		
+	RegisterScriptCallback("on_before_hit_after_calcs", ActorOnBeforeHitAfterCalcs)
+end

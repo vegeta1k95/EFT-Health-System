@@ -1,0 +1,106 @@
+; -- =============================================================
+; -- ======================== ANIMATIONS =========================
+; -- =============================================================
+
+
+; -- ============== MEDKITS ===============
+
+; -- FDDA animation (default)
+[item_efth_medkit_hud]:item_ea_medkit_hud
+[item_efth_medkit_army_hud]:item_ea_medkit_army_hud
+[item_efth_medkit_scientic_hud]:item_ea_medkit_scientic_hud
+
+; -- ============= BANDAGES ===============
+
+; -- FDDA animation (default)
+[item_efth_bandage_0_hud]:item_ea_bandage_hud
+
+; -- Gunslinger animation
+[item_efth_bandage_1_hud] 
+hands_position				= 0,-0.11,0.17
+hands_orientation			= 0,20,0
+hands_position_16x9			= 0,-0.11,0.17
+hands_orientation_16x9		= 0,20,0
+item_visual             	= efth\hud\hud_bandage_1.ogf
+anm_ea_show				    = bint, bint
+hud_fov                     = 0.9
+
+; -- FDDA animation with tourniquet model
+[item_efth_bandage_2_hud]:item_ea_bandage_hud
+item_visual             	= efth\hud\hud_bandage_2.ogf
+
+; -- ========== INJECTORS =================
+
+; -- Gunslinger injector animation
+[item_efth_injector_1_hud] 
+hands_position				= 0.0,-0.025,0.2
+hands_orientation			= 0.0,0.0,0.0
+hands_position_16x9			= 0.0,-0.025,0.2
+hands_orientation_16x9		= 0.0,0.0,0.0
+hud_fov                     = 1.00
+item_visual             	= efth\hud\hud_injector_1.ogf
+anm_ea_show					= rad, antirad
+
+; -- Gunslinger ampula animaton
+[item_efth_injector_2_hud]
+hands_position				= 0.0,-0.025,0.12
+hands_orientation			= 0.0,0.0,0.0
+hands_position_16x9			= 0.0,-0.025,0.12
+hands_orientation_16x9		= 0.0,0.0,0.0
+hud_fov                     = 0.80
+item_visual             	= efth\hud\hud_injector_2.ogf
+anm_ea_show					= med, med
+
+; -- Morphine injector animation
+[item_efth_injector_morphine_hud]
+item_visual             	= efth\hud\hud_injector_morphine.ogf
+hands_position              = -0.0055,0.02, 0.04
+hands_position_16x9         = -0.0055,0.02, 0.04
+anm_ea_show					= hand_morphine_use, item_morphine_use
+
+[item_efth_injector_adrenaline_hud]:item_efth_injector_morphine_hud
+item_visual             	= efth\hud\hud_injector_adrenaline.ogf
+
+[item_efth_injector_propital_hud]:item_efth_injector_morphine_hud
+item_visual             	= efth\hud\hud_injector_propital.ogf
+
+[item_efth_injector_zagustin_hud]:item_efth_injector_morphine_hud
+item_visual             	= efth\hud\hud_injector_zagustin.ogf
+
+[item_efth_injector_sj6_hud]:item_efth_injector_morphine_hud
+item_visual             	= efth\hud\hud_injector_sj6.ogf
+
+[item_efth_injector_sj1_hud]:item_efth_injector_morphine_hud
+item_visual             	= efth\hud\hud_injector_sj1.ogf
+
+[item_efth_injector_etg_hud]:item_efth_injector_morphine_hud
+item_visual             	= efth\hud\hud_injector_etg.ogf
+
+
+; -- FDDA stimpack animations
+[item_efth_injector_stimpack_hud]:item_ea_stimpack_hud
+[item_efth_injector_stimpack_army_hud]:item_ea_stimpack_army_hud
+[item_efth_injector_stimpack_scientic_hud]:item_ea_stimpack_scientic_hud
+
+; -- ============= PILLS ==================
+
+[item_efth_pills_coagulant_hud]:item_ea_drug_coagulant_hud
+[item_efth_pills_sleepingpills_hud]:item_ea_drug_sleepingpills_hud
+[item_efth_pills_psy_blocade_hud]:item_ea_drug_psy_blocade_hud
+[item_efth_pills_antiemetic_hud]:item_ea_antiemetic_hud
+[item_efth_pills_caffeine_hud]:item_ea_caffeine_hud
+[item_efth_pills_antirad_kalium_hud]:item_ea_antirad_kalium_hud
+[item_efth_pills_antidot_hud]:item_ea_drug_antidot_hud
+[item_efth_pills_antibio_sulfad_hud]:item_ea_antibio_sulfad_hud
+[item_efth_pills_radioprotector_hud]:item_ea_drug_radioprotector_hud
+[item_efth_pills_akvatab_hud]:item_ea_drug_akvatab_hud
+[item_efth_pills_yadulin_hud]:item_ea_drug_yadulin_hud
+
+; -- ============= OTHER ==================
+
+[item_efth_booster_hud]:item_ea_booster_weight_hud
+
+[item_efth_fake_hud]
+item_visual					= efth\hud\fake_item.ogf
+
+

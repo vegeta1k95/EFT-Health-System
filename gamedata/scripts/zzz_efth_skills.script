@@ -1,0 +1,166 @@
+local class = zzz_efth_lua.class
+
+class "CSkill"
+{
+	__init = function(self)
+		self.value = 0
+		self.bonus = 0
+	end;
+	
+	Get = function(self)
+		return (self.value + self.bonus)
+	end;
+	
+	IsElite = function(self)
+		return (self:Get() >= 50)
+	end;
+	
+	AddBase = function(self, value)
+		local new_value = math.min(self.value + value, 50)
+		if (self.value ~= new_value) then
+			self.value = new_value
+			if (value ~= 0) then
+				self:OnChanged(value, false)
+			end
+		end
+		
+	end;
+	
+	AddBonus = function(self, value)
+		self.bonus = self.bonus + value
+		if (value ~= 0) then
+			self:OnChanged(value, true)
+		end
+	end;
+	
+	OnChanged = function(self, value, is_bonus)
+		-- OVERRIDE
+	end;
+}
+
+
+class "CSkillEndurance" : extends "CSkill"
+{
+	__init = function(self)
+		CSkill.__init(self)
+	end;
+	
+	OnChanged = function(self, value, is_bonus)
+		
+		-- Every time skill points are gained for Endurance, 
+		-- 25% of the amount is gained for Health.
+		if (value > 0) and (not is_bonus) then
+			Body.skills.health:AddBase(0.25 * value)
+		end
+		
+	end;
+	
+}
+
+--[[
+	REFERENCE: https://escapefromtarkov.fandom.com/wiki/Health
+	
+	- Reduces limb fracture chance (1.2% per level → -60% at Elite Level)
+	- Reduces dehydration rate (0.6% per level → -30% at Elite Level)
+	- Reduces energy consumption (0.6% per level → -30% at Elite Level)	(TODO)
+		
+--]]
+class "CSkillHealth" : extends "CSkill"
+{
+	__init = function(self)
+		CSkill.__init(self)
+	end;
+	
+	GetConsumptionRateMultiplier = function(self)
+		return (self:Get() * 0.006)
+	end;
+	
+	GetFractureChanceReduce = function(self)
+		return (self:Get() * 0.012)
+	end;
+	
+	OnChanged = function(self, value, is_bonus)
+		local rate_multiplier = 1.0 - self:GetConsumptionRateMultiplier()
+		Body.conditions.hydration:SetRateMultiplier(rate_multiplier)
+	end;
+}
+
+--[[
+	TODO
+--]]
+class "CSkillImmunity" : extends "CSkill"
+{
+	__init = function(self)
+		CSkill.__init(self)
+	end;
+}
+
+--[[
+	TODO
+--]]
+class "CSkillMetabolism" : extends "CSkill"
+{
+	__init = function(self)
+		CSkill.__init(self)
+	end;
+}
+
+--[[
+	TODO
+--]]
+class "CSkillStrength" : extends "CSkill"
+{
+	__init = function(self)
+		CSkill.__init(self)
+	end;
+	
+	OnChanged = function(self, value, is_bonus)
+		
+		-- Every time skill points are gained for Strength, 
+		-- 25% of the amount is gained for Health.
+		if (value > 0) and (not is_bonus) then
+			Body.skills.health:AddBase(0.25 * value)
+		end
+		
+	end;
+}
+
+--[[
+	TODO
+--]]
+class "CSkillStressResistance" : extends "CSkill"
+{
+	__init = function(self)
+		CSkill.__init(self)
+	end;
+	
+}
+
+--[[
+	REFERENCE: https://escapefromtarkov.fandom.com/wiki/Vitality
+	
+	- Reduces bleeding chance (1.2% per level → -60% at 51 Level)
+	- 50+ level: Bleedings stop on their own (20 sec.)
+	- 50+ level: Fresh wounds have halved durations
+		
+--]]
+class "CSkillVitality" : extends "CSkill"
+{
+	__init = function(self)
+		CSkill.__init(self)
+	end;
+	
+	GetBleedChanceReduce = function(self)
+		return self:Get() * 0.012
+	end;
+	
+	OnChanged = function(self, value, is_bonus)
+		
+		-- Every time skill points are gained for Vitality, 
+		-- 25% of the amount is gained for Health.
+		if (value > 0) and (not is_bonus) then
+			Body.skills.health:AddBase(0.25 * value)
+		end
+		
+	end;
+}

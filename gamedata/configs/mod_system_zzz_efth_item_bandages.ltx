@@ -1,0 +1,123 @@
+![bandage]:efth_limb_specific
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width 									   = 1
+inv_grid_height 								   = 1
+inv_grid_x 										   = 0
+inv_grid_y 										   = 3
+
+boost_time 					                       = 0
+boost_bleeding_restore 		                       = 0
+eat_satiety 				                       = 0
+eat_alcohol					                       = 0
+eat_sleepiness				                       = 0
+
+; -- EFTH medicine
+efth_remove_bleed_light							   = 1
+
+
+[bandage_army]:booster_multi, efth_limb_specific 
+$spawn 						                       = "food and drugs\bandage"
+kind			                               	   = i_medical
+visual						                       = efth\dynamics\itm_bandage_army.ogf
+use_sound					                       = interface\inv_bandage_3p7
+
+inv_name					                       = st_bandage_army
+description					                       = st_bandage_army_descr
+
+icons_texture           						   = ui\ui_efth_meds
+inv_grid_width									   = 1
+inv_grid_height									   = 1
+inv_grid_x										   = 1
+inv_grid_y										   = 3
+
+inv_weight					                       = 0.07
+
+use_condition                                      = true
+max_uses                                           = 2
+remove_after_use                                   = true
+
+script_binding                                     = bind_item.bind
+
+cost						                       = 1500
+tier = 2
+
+; -- EFTH
+efth_remove_bleed_light							   = 1
+
+
+[tourniquet]:booster, efth_limb_specific
+$spawn 						                       = "food and drugs\bandage"
+kind			                               	   = i_medical
+visual						                       = efth\dynamics\itm_bandage_army.ogf
+use_sound					                       = interface\inv_bandage_3p7
+
+inv_name					                       = st_tourniquet
+description					                       = st_tourniquet_descr
+
+icons_texture           						   = ui\ui_efth_meds
+inv_grid_width									   = 1
+inv_grid_height									   = 1
+inv_grid_x										   = 4
+inv_grid_y										   = 2
+
+inv_weight					                       = 0.07
+
+script_binding                                     = bind_item.bind
+remove_after_use                                   = true
+
+cost						                       = 1500
+tier = 3
+
+; -- EFTH
+efth_remove_bleed_heavy							   = 1
+
+
+[hemostatic]:booster_multi, efth_limb_specific
+$spawn 						                       = "food and drugs\bandage"
+kind			                               	   = i_medical
+visual						                       = efth\dynamics\itm_bandage_army.ogf
+use_sound					                       = interface\inv_bandage_3p7
+
+inv_name					                       = st_hemostatic
+description					                       = st_hemostatic_descr
+
+icons_texture           						   = ui\ui_efth_meds
+inv_grid_width									   = 1
+inv_grid_height									   = 1
+inv_grid_x										   = 5
+inv_grid_y										   = 2
+
+inv_weight					                       = 0.07
+
+max_uses										   = 3
+use_condition                                      = true
+remove_after_use                                   = true
+
+cost						                       = 1500
+tier 											   = 4
+
+script_binding                                     = bind_item.bind
+
+; -- EFTH
+efth_remove_bleed_heavy							   = 1
+
+
+
+![jgut]:efth_limb_specific
+visual											   = efth\dynamics\itm_tourniquet.ogf
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width 									   = 1
+inv_grid_height 								   = 1
+inv_grid_x 										   = 0
+inv_grid_y 										   = 2
+
+boost_time 					                       = 0
+boost_bleeding_restore 		                       = 0
+eat_satiety 				                       = 0
+eat_alcohol					                       = 0
+eat_sleepiness				                       = 0
+
+; -- EFTH medicine
+efth_remove_bleed_heavy							   = 1

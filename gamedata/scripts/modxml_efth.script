@@ -1,0 +1,12 @@
+function on_xml_read()
+    RegisterScriptCallback("on_xml_read", function(xml_file_name, xml_obj)
+		
+		-- Insert decals into HUD
+        local xml_to_change = [[ui\ui_custom_msgs.xml]]	
+	
+        if (xml_file_name == xml_to_change) then		
+			xml_obj:insertFromXMLFile([[ui\ui_efth_decals.xml]])
+        end
+		
+    end)
+end

@@ -1,0 +1,170 @@
+[analgin]:booster_multi, efth_booster
+$spawn 						                       = "food and drugs\antibio_sulfad"
+kind			                               	   = i_medical
+visual						                       = dynamics\equipments\medical\drug_sleeping_pills.ogf
+use_sound					                       = interface\inv_eat_pills_2
+
+inv_name					                       = st_analgin
+description					                       = st_analgin_descr
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width									   = 1
+inv_grid_height									   = 1
+inv_grid_x										   = 2
+inv_grid_y										   = 3
+
+inv_weight					                       = 0.02
+empty_weight					                   = 0.001
+
+use_condition                            		   = true
+max_uses                                 		   = 4
+
+cost						                       = 1400
+tier 											   = 1
+
+; -- EFTH Buff
+efth_remove_pain						   		   = 95
+
+; -- EFTH Debuff
+efth_hydration									   = -19
+
+
+
+[augmentin]:booster, efth_booster
+$spawn 						                       = "food and drugs\antirad"
+kind			                               	   = i_medical
+visual											   = efth\dynamics\itm_ibuprofen.ogf
+use_sound					                       = interface\inv_eat_pills
+snd_on_take										   = pills
+
+inv_name										   = st_augmentin
+description					                       = st_augmentin_descr
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width 									   = 1
+inv_grid_height 								   = 1
+inv_grid_x 										   = 15
+inv_grid_y 										   = 0
+
+empty_weight					                   = 0.01
+inv_weight					                       = 0.15
+
+cost						                       = 2500
+tier 											   = 2
+
+; -- EFTH Buff
+efth_remove_pain								   = 155
+efth_energy										   = 5
+efth_skill_immunity_duration					   = 300
+efth_skill_immunity_amount						   = 1
+efth_skill_immunity_delay						   = 1
+
+; -- EFTH Debuff
+efth_hydration									   = -5
+
+
+[ibuprofen]:booster_multi, efth_booster
+$spawn 						                       = "food and drugs\antirad"
+kind			                               	   = i_medical
+visual											   = efth\dynamics\itm_ibuprofen.ogf
+use_sound					                       = interface\inv_eat_pills
+snd_on_take										   = pills
+
+inv_name										   = st_ibuprofen
+description					                       = st_ibuprofen_descr
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width 									   = 1
+inv_grid_height 								   = 1
+inv_grid_x 										   = 15
+inv_grid_y 										   = 0
+
+empty_weight					                   = 0.01
+inv_weight					                       = 0.15
+
+cost						                       = 2500
+tier 											   = 3
+
+use_condition                            		   = true
+max_uses                                 		   = 15
+dont_stack 										   = true
+
+; -- EFTH Buff
+efth_remove_pain								   = 290
+efth_remove_concussion					   		   = 1
+
+; -- EFTH Debuff
+efth_hydration									   = -17
+
+
+[vaseline]:booster_multi, efth_booster
+$spawn 						                       = "food and drugs\antirad"
+kind			                               	   = i_medical
+
+visual											   = efth\dynamics\itm_ibuprofen.ogf
+use_sound					                       = interface\inv_eat_pills
+snd_on_take										   = pills
+
+inv_name										   = st_vaseline
+description					                       = st_vaseline_descr
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width 									   = 1
+inv_grid_height 								   = 1
+inv_grid_x 										   = 8
+inv_grid_y 										   = 3
+
+cost						                       = 2500
+tier 											   = 3
+
+empty_weight					                   = 0.01
+inv_weight					                       = 0.15
+
+use_condition                            		   = true
+max_uses                                 		   = 6
+
+; -- EFTH Buff
+efth_remove_pain								   = 350
+
+; -- EFTH Debuff
+efth_hydration									   = -9
+efth_energy										   = -9
+
+
+
+![analgetic]:efth_booster
+
+boost_wound_immunity		                       = 0.05
+boost_fire_wound_immunity	                       = 0.05
+boost_explosion_immunity	                       = 0.05
+boost_strike_immunity		                       = 0.05
+
+boost_bleeding_restore		                       = 0
+
+; -- EFTH Buff
+
+efth_remove_pain								   = 150
+efth_skill_vitality_delay						   = 1			; seconds
+efth_skill_vitality_duration					   = 150		; seconds
+efth_skill_vitality_amount						   = 5					
+
+
+![drug_coagulant]:efth_booster
+boost_bleeding_restore		                       = 0
+
+; -- EFTH Buff
+efth_skill_vitality_delay						   = 1			; seconds
+efth_skill_vitality_duration					   = 180		; seconds
+efth_skill_vitality_amount						   = 20			
+
+
+![salicidic_acid]:efth_booster
+visual											   = efth\dynamics\itm_stim_morphine.ogf
+
+boost_bleeding_restore		                       = 0
+
+; -- EFTH
+efth_skill_vitality_delay						   = 1			; seconds
+efth_skill_vitality_duration					   = 160		; seconds
+efth_skill_vitality_amount						   = 10			
+

@@ -1,0 +1,864 @@
+--[[
+	MOD: Escape From Tarkov Health System (EFTH)
+	AUTHOR: vegeta1k95
+--]]
+
+local class = zzz_efth_lua.class
+local enum = zzz_efth_lua.enum
+
+local CopyTable = zzz_efth_lua.CopyTable
+local ChooseRandom = zzz_efth_lua.ChooseRandom
+
+local GetConfig = zzz_efth_mcm.GetConfig
+
+-- ============================== Constants ====================================
+CAMPFIRE_HEAL_ENABLED  = GetConfig("general_campfire_heal")
+CAMPFIRE_HEAL_DISTANCE = 10.0	-- 10 meters
+CAMPFIRE_HEAL_AMOUNT   = 0.3 	-- 0.3 HP on each limb
+CAMPFIRE_HEAL_INTERVAL = 6000	-- 6 seconds between heals
+
+FRACTURE_PERCENT_MAXHP = 0.3
+
+BLEED_HEAVY_PERCENT_MAXHP = 0.1
+BLEED_LIGHT_PERCENT_MAXHP = 0.1
+
+PAIN_DAMAGE_THRESHOLD = 5
+PAIN_DURATION_DEFAULT = 4000
+
+--==============================================================================
+--============================= Class "CLimb" ==================================
+--==============================================================================
+
+--[[
+	This represents a body limb.
+--]]
+class "CLimb" 
+{
+	__init = function(self, name, hp_max, redirect_coeff, is_vital, is_fracturable)
+		self.name			  = name
+		self.hp               = hp_max				-- Current HP
+		self.hp_max           = hp_max				-- Max possible HP
+		self.hp_max_current   = hp_max				-- Max current HP (can be temporarily lower after restoration of a destroyed limb)
+		self.hp_max_timer	  = 0					-- Max HP restore timer (`hp_max_current` will restore towards `hp_max` with time, see `OnUpdate`)
+		
+		self.redirect_coeff   = redirect_coeff		-- If destroyed, redirect this percent of damage to other limbs
+		self.is_vital		  = is_vital			-- If destruction of this limb lead to death
+		self.is_fracturable	  = is_fracturable		-- If limb can have fracture debuff
+		
+		-- Flag to mark this limb to be treated
+		-- on the next item use
+		self.to_heal_next	  = false
+		
+		self.penalty_counter   = 0						-- Number of effects which apply penalty to this limb
+		self.penalty_on_apply  = function(self) end		-- To call when applying penalty to limb
+		self.penalty_on_remove = function(self) end		-- To call when removing penalty from limb
+	end;
+	
+	-- =================== HEALTH ============================
+		
+	OnHealthChanged = function(self)
+		Body.conditions.health:Refresh()
+		SendScriptCallback("efth_on_health_changed", self)
+	end;
+		
+	PercentFromTotalHealth = function(self)
+		return self.hp_max / Body.conditions.health.hp_max
+	end;
+	
+	GetPercentHP = function(self)
+		return self.hp / self.hp_max_current
+	end;
+	
+	SetHP = function(self, value)
+		local old_hp = self.hp
+		local new_hp = clamp(value, 0, self.hp_max_current)
+		if (self.hp ~= new_hp) then
+			self.hp = new_hp
+			
+			-- HP changed - send callback 
+			self:OnHealthChanged()
+			
+			-- HP became 0 - apply penalty
+			if (self.hp == 0) then
+				self:ApplyPenalty()			
+			end
+			
+			-- HP was 0, became >0 - remove penalty
+			if (old_hp == 0) then
+				self:RemovePenalty()
+			end
+			
+		end
+	end;
+	
+	SetMaxHP = function(self, value)
+		self.hp_max_current = math.max(math.min(value, self.hp_max), 1)
+		self:OnHealthChanged()
+	end;
+	
+	ApplyDamage = function(self, damage)
+		self:SetHP(self.hp - damage)
+		
+		-- +0.01 Vitality for every 5 points of damage taken
+		Body.skills.vitality:AddBase(damage / 5 * 0.01)
+	end;
+	
+	ApplyHeal = function(self, heal)
+		self:SetHP(self.hp + heal)
+	end;
+	
+	CanBeHealed = function(self)
+		return (self.hp > 0) and (self.hp < self.hp_max_current)
+	end;
+
+	IsDestroyed = function(self)
+		return (self.hp == 0)
+	end;
+	
+	IsAlive = function(self)
+		return (self.hp > 0)
+	end;
+	
+	-- ========================= BUFFS =============================
+	
+	AddBuff = function(self, cls, id, ...)
+		Body.buffs:Add(self.name, cls, id, ...)
+	end;
+	
+	RemoveBuff = function(self, cls, id)
+		Body.buffs:Remove(self.name, cls, id)
+	end;
+	
+	HasBuff = function(self, cls, id)
+		return Body.buffs:HasBuff(self.name, cls, id)
+	end;
+	
+	-- ====================== PENALTIES ============================
+	
+	ApplyPenalty = function(self)
+		if (self.penalty_counter == 0) then
+			self:penalty_on_apply()
+		end
+		self.penalty_counter = self.penalty_counter + 1
+	end;
+	
+	RemovePenalty = function(self)
+		if (self.penalty_counter == 1) then
+			self:penalty_on_remove()
+		end
+		self.penalty_counter = math.max(self.penalty_counter - 1, 0)
+	end;
+	
+}
+
+--==============================================================================
+--============================= Class "CBody" ==================================
+--==============================================================================
+
+class "CBody" 
+{
+
+	__init = function(self)
+	
+		-- Update timer
+		self.last_update = time_global()
+		
+		-- If we aiming down the sight
+		self.is_ads = false
+		
+		-- Conditions
+		-- More details inside `zzz_efth_conditions.script`
+		self.conditions = {
+			health		= CConditionHealth(),
+			stamina 	= CConditionStamina(),		-- (TODO)
+			energy 		= CConditionEnergy(),
+			hydration 	= CConditionHydration(),
+			radiation 	= CConditionRadiation(),
+			weight		= CConditionWeight(),		-- (TODO)
+		}
+		
+		-- Skills 
+		-- More details inside `zzz_efth_skills.script`
+		self.skills = {
+			endurance 			= CSkillEndurance(),
+			health 				= CSkillHealth(),
+			immunity 			= CSkillImmunity(),
+			metabolism 			= CSkillMetabolism(),
+			strength 			= CSkillStrength(),
+			stress_resistance 	= CSkillStressResistance(),
+			vitality 			= CSkillVitality(),
+		}
+		
+		-- Buffs list
+		self.buffs = CBuffList()
+			
+		-- Body limbs
+		self.limbs = {
+			--					name		 HP  RED   VITAL  PENAL
+			head 		= CLimb("head", 	 35, 0.00, true,  false),   -- Heal: vital, no penalties (death)
+			torso 		= CLimb("torso", 	 80, 0.00, true,  false),	-- Torso: vital, no penalties (death)
+			stomach 	= CLimb("stomach", 	 70, 1.05, false, false),	-- Stomach: non-vital, has penalties
+			arm_left 	= CLimb("arm_left",  60, 0.45, false, true),	-- Arms: non-vital, has penalties
+			arm_right 	= CLimb("arm_right", 60, 0.45, false, true),	
+			leg_left 	= CLimb("leg_left",  65, 0.70, false, true),	-- Legs: non-vital, has penalties
+			leg_right 	= CLimb("leg_right", 65, 0.70, false, true),
+		}
+		
+		for name, limb in pairs(self.limbs) do
+			self.conditions.health.hp_max = self.conditions.health.hp_max + limb.hp_max
+		end
+		
+		local penalty_leg_apply = function(limb)
+			limb:AddBuff(CBuffBrokenLegDebuff, nil, limb.name, 0.45)
+			limb:AddBuff(CBuffBrokenLegDamage)
+		end
+		
+		local penalty_leg_remove = function(limb)
+			limb:RemoveBuff(CBuffBrokenLegDebuff)
+			limb:RemoveBuff(CBuffBrokenLegDamage)
+		end
+		
+		local penalty_arm_apply = function(limb)
+			limb:AddBuff(CBuffBrokenArmDebuff)
+		end;
+		
+		local penalty_arm_remove = function(limb)
+			limb:RemoveBuff(CBuffBrokenArmDebuff)
+		end;
+		
+		-- Legs
+		self.limbs.leg_left.penalty_on_apply = penalty_leg_apply
+		self.limbs.leg_left.penalty_on_remove = penalty_leg_remove
+		self.limbs.leg_right.penalty_on_apply = penalty_leg_apply
+		self.limbs.leg_right.penalty_on_remove = penalty_leg_remove
+		
+		-- Arms
+		self.limbs.arm_left.penalty_on_apply = penalty_arm_apply
+		self.limbs.arm_left.penalty_on_remove = penalty_arm_remove
+		self.limbs.arm_right.penalty_on_apply = penalty_arm_apply
+		self.limbs.arm_right.penalty_on_remove = penalty_arm_remove
+		
+	end;
+	
+	-- ========================= BUFFS SECTION =========================
+	
+	AddBuffDelayed = function(self, delay, cls, id, ...)
+		self.buffs:AddDelayed(delay, nil, cls, id, ...)
+	end;
+	
+	AddBuff = function(self, cls, id, ...)
+		self.buffs:Add(nil, cls, id, ...)
+	end;
+	
+	RemoveBuff = function(self, cls, id)
+		self.buffs:Remove(nil, cls, id)
+	end;
+	
+	HasBuff = function(self, cls, id)
+		return self.buffs:HasBuff(nil, cls, id)
+	end;
+	
+	-- ========================= STATE SECTION =========================
+	
+	-- Save state
+	Save = function(self, data)
+	
+		local save = {
+			limbs  = {},
+			buffs  = {},
+			skills = {},
+			conditions = {}
+		}
+		
+		CopyTable(self.limbs, save.limbs)
+		CopyTable(self.buffs, save.buffs)
+		CopyTable(self.skills, save.skills)
+		CopyTable(self.conditions, save.conditions)
+	
+		data.efth_body = save
+		
+	end;
+	
+	-- Load state
+	Load = function(self, data)
+	
+		local save = data.efth_body
+	
+		-- Restore table data, if present
+		if (save) then
+			CopyTable(save.limbs, self.limbs)
+			CopyTable(save.buffs, self.buffs)
+			CopyTable(save.skills, self.skills)
+			CopyTable(save.conditions, self.conditions)
+		end
+		
+	end;
+	
+	-- First update setup
+	OnFirstUpdate = function(self)
+	
+		-- Make actor invulnerable to default damage system
+		db.actor:set_can_be_harmed(false)
+		
+		-- Send callbacks about updating HP
+		for limb_name, limb in pairs(self.limbs) do
+			limb:OnHealthChanged()
+		end
+		
+		-- Send callbacks about updating buffs
+		for buff_id, buff in pairs(self.buffs.active.queue) do
+			SendScriptCallback("efth_on_buff_added", buff)
+		end
+		
+	end;
+		
+	-- Why. Won't. You. DIE!
+	Die = function(self)
+		db.actor:set_health_ex(0)
+	end;
+	
+	-- ================================== DAMAGE LOGIC =====================================
+	
+	--[[ 
+		Damage calculations
+		
+		REFERENCE: https://www.youtube.com/watch?v=I_mAiNdmpSA
+		
+		IDEA: All the overflowing damage to a limb (if damage > limb's current HP)
+			  is redistributed to other limbs.
+		NOTE: Redistributed damage WILL kill you if a vital limb becomes destroyed
+			  as a result.
+	--]]
+	ApplyDamage = function(self, limb, damage, hit_type)
+		
+		-- No damage - skip
+		if (damage == 0) then
+			return
+		end
+		
+		-- Overflow damage
+		local overflow = damage - limb.hp
+		
+		-- Apply damage dealt
+		limb:ApplyDamage(damage)
+		
+		-- Vital limb destroyed by direct damage - DEAD
+		if (limb:IsDestroyed()) and (limb.is_vital) then
+			self:Die()
+			return
+		end
+				
+		-- Damage >= limb HP - limb is destroyed, should redirect damage.
+		if (overflow > 0) and (limb.redirect_coeff > 0) then
+		
+			-- Damage which should be distributed other limbs
+			overflow = overflow * limb.redirect_coeff
+
+			-- Iterate each limb and apply damage proportional to 
+			-- that limb's percentage of the total max health.
+			-- Example: Overflow = 20
+			-- 		    TORSO max HP = 80
+			--			BODY max HP = 365
+			--			Applied damage to TORSO = 20 * 80/365 = 4.38
+			for name, lmb in pairs(self.limbs) do
+				lmb:ApplyDamage(overflow * lmb:PercentFromTotalHealth())
+				
+				-- Vital limb destroyed by indirect (redirected) damage
+				if (lmb:IsDestroyed() and lmb.is_vital) then
+					self:Die()
+					return
+				end
+							
+			end
+		end
+		
+		-- Above damage threshold generic hit applies short pain
+		if (damage > PAIN_DAMAGE_THRESHOLD) then
+			limb:AddBuff(CBuffPainTemporary, nil, PAIN_DURATION_DEFAULT)
+		end
+		
+		-- If hit type allows - try to apply bleeding
+		if (hit_type.prob_bleed > 0) and (CBuffHemostatic.ACTIVE == 0) then
+		
+			-- Order of evaluation
+			-- 1) Fresh wound - 100% chance to start Heavy Bleed
+			-- 2) Heavy bleed threshold met - (prob_bleed)% chance to start Heavy Bleed
+			-- 3) Light bleed threshold met - (prob_bleed)% chance to start Light Bleed
+			
+			-- Heavy bleed threshold - BLEED_HEAVY_PERCENT_MAXHP of the current max limb HP
+			-- Light bleed threshold - BLEED_LIGHT_PERCENT_MAXHP of the current max limb HP
+			
+			-- NOTE: `prob_bleed` chance is influenced by your Vitality skill level!
+			
+			local prob_bleed = hit_type.prob_bleed * (1.0 - self.skills.vitality:GetBleedChanceReduce())
+			local is_temporary = self.skills.vitality:IsElite()
+			
+			printf("Bleed chance " .. prob_bleed .. " Temp " .. tostring(is_temporary))
+			
+			if (limb:HasBuff(CBuffFreshWound)) then
+				if (is_temporary) then
+					limb:AddBuff(CBuffBleedHeavyTemporary)
+				else
+					limb:AddBuff(CBuffBleedHeavy)
+				end
+			elseif (damage > limb.hp_max_current * BLEED_HEAVY_PERCENT_MAXHP) and (math.random() < prob_bleed) then
+				if (is_temporary) then
+					limb:AddBuff(CBuffBleedHeavyTemporary)
+				else
+					limb:AddBuff(CBuffBleedHeavy)
+				end
+			elseif (damage > limb.hp_max_current * BLEED_LIGHT_PERCENT_MAXHP) and (math.random() < prob_bleed) then
+				-- Light bleed cannot override heavy bleed
+				if (limb:HasBuff(CBuffBleedHeavy)) or 
+				   (limb:HasBuff(CBuffBleedHeavyTemporary)) 
+				then
+					if (is_temporary) then
+						limb:AddBuff(CBuffBleedLightTemporary)
+					else
+						limb:AddBuff(CBuffBleedLight)
+					end
+				end
+			end
+			
+		end
+		
+		-- If hit type and limb type allows - try to apply fracture
+		if (hit_type.prob_fracture > 0)	and (not limb:HasBuff(CBuffFracture)) then
+		
+			-- Fracture threshold met - (prob_fracure)% change to apply Fracture
+			-- NOTE: Fall damage always applies fracture above threshold (has prob = 1)			
+			-- NOTE: Fracture threshold - FRACTURE_PERCENT_MAXHP % of the current max limb HP
+			
+			-- NOTE: `prob_fracture` chance is influenced by your Health skill level!
+			
+			local prob_fracture = hit_type.prob_fracture * (1.0 - self.skills.health:GetFractureChanceReduce())
+			
+			if (damage > limb.hp_max_current * FRACTURE_PERCENT_MAXHP) and (math.random() < prob_fracture) then
+		
+				-- Fracture is accompanied by constant pain, until treated
+				limb:AddBuff(CBuffFracture)
+				
+				-- Play bone crack sound
+				sound_object("efth\\fracture"):play(db.actor, 0, sound_object.s2d)
+				
+			end
+		end
+		
+		-- Roll for concussion if head is hit
+		if (limb.name == "head") and 
+		   (CBuffConcussionHeal.ACTIVE == 0) and
+		   (math.random() <= 0.3)
+		then
+			Body:AddBuff(CBuffConcussion, nil, 7000)
+		end
+		
+		-- TODO: Move this out to `effects`
+		ImpactEffect(damage)
+		
+	end;
+	
+	--[[
+		This function will damage all the non-dead limbs by constant amount.
+		
+		WARNING: Player is NOT dying if this damage makes vital limb's HP go to 0,
+				 but, player WILL die if total body HP goes to 0!				 
+		NOTE:    Negative damage will result in heal!
+	--]]
+	ApplyBodyDamage = function(self, damage, is_percentile)
+		-- No damage - skip
+		if (damage == 0) then
+			return
+		end
+		
+		for name, limb in pairs(self.limbs) do
+			
+			-- Damage applies to all non-dead limbs
+			if (limb:IsAlive()) then
+				
+				-- If damage should be applied respective to the limb's percentage from total health
+				if (is_percentile) then
+					limb:ApplyDamage(damage * limb:PercentFromTotalHealth())
+				else
+					limb:ApplyDamage(damage)
+				end
+				
+			end
+		end
+		
+		-- We have no more health - dead!
+		if (self.conditions.health.hp == 0) then
+			self:Die()
+		end
+		
+	end;
+		
+	--[[
+		DOES:
+			1) Restores limb's max HP
+			2) Heals limb to max HP (even if was destroyed)
+			3) Removes negative debuffs:
+				• bleedings
+				• fresh wounds
+				• fractures
+				• concussion
+				• pain
+		NOTE: Used when healed by medics
+	--]]
+	HealFully = function(self)
+		
+		for name, limb in pairs(self.limbs) do
+			
+			-- Restore max HP
+			limb:SetMaxHP(limb.hp_max)
+			
+			-- Restore HP
+			limb:SetHP(limb.hp_max)
+			
+			-- Remove debuffs
+			limb:RemoveBuff(CBuffBleedLight)
+			limb:RemoveBuff(CBuffBleedLightTemporary)
+			limb:RemoveBuff(CBuffBleedHeavy)
+			limb:RemoveBuff(CBuffBleedHeavyTemporary)
+			limb:RemoveBuff(CBuffFreshWound)
+			limb:RemoveBuff(CBuffPainTemporary)
+			limb:RemoveBuff(CBuffFracture)
+			limb:RemoveBuff(CBuffConcussion)
+			
+		end
+		
+	end;
+	
+	IsHealable = function(self)
+	
+		if (self.conditions.health:GetPercent() < 1.0) or 
+		   (self.conditions.health.hp_max_current < self.conditions.health.hp_max) or
+		   (CBuffBleedHeavy.ACTIVE > 0) or (CBuffBleedHeavyTemporary.ACTIVE > 0) or
+		   (CBuffBleedLight.ACTIVE > 0) or (CBuffBleedLightTemporary.ACTIVE > 0) or
+		   (CBuffFracture.ACTIVE > 0) or (CBuffConcussion.ACTIVE > 0)
+		then
+			return true
+		end
+		
+		return false
+	end;
+	
+	-- ============================= OVER TIME / DURATIONAL ======== =======================
+	
+	GetNearbyLitCampfire = function(distance)
+
+		local pos = db.actor:position()
+		
+		-- Iterate campfires
+		for id, binder in pairs(bind_campfire.campfires_all) do
+			
+			-- Check only those lit
+			if (binder and binder.campfire and binder.campfire:is_on()) then
+			
+				-- Check for distance from player
+				if (pos:distance_to_sqr(binder.object:position()) <= distance) then
+					return true
+				end
+				
+			end 
+			
+		end 
+		
+		return false
+	end;
+	
+	-- This is called on each `actor_on_update` and updates all time-based and durational 
+	-- effects: bleedings, wounds, pain, painkillers, buffs, and so on.
+	-- Interval of update: 1 second = 1000 ms
+	OnUpdate = function(self)
+		
+		-- Time now
+		local time_now = time_global()
+		
+		-- Time since last big update
+		local time_since_update = time_now - self.last_update
+
+		-- Time for update has come (1 second)
+		if (time_since_update > 1000) then
+		
+			-- Update max HP of each limb
+			for name, limb in pairs(self.limbs) do
+				
+				-- If limb is restoring after surgery,
+				-- restore max limb's HP by 1 each minute (IRL).
+				if (limb.hp_max > limb.hp_max_current) and 
+				   (time_now - limb.hp_max_timer > 60000)
+				then
+					limb:SetMaxHP(limb.hp_max_current + 1)
+					limb.hp_max_timer = time_now
+				end
+
+			end
+			
+			-- Update conditions
+			for condition_name, condition in pairs(self.conditions) do
+				condition:Update(time_since_update)
+			end
+		
+			-- Update buffs
+			self.buffs:Update(time_now, time_since_update)
+			
+			-- If enabled - check for campfire nearby
+			if (CAMPFIRE_HEAL_ENABLED) then
+				if (self.GetNearbyLitCampfire(CAMPFIRE_HEAL_DISTANCE)) then
+					self:AddBuff(CBuffCampfire, nil, CAMPFIRE_HEAL_AMOUNT, CAMPFIRE_HEAL_INTERVAL)
+				else
+					self:RemoveBuff(CBuffCampfire)
+				end
+			end
+			
+			-- Update timer
+			self.last_update = time_now
+
+		end
+	end;
+	
+	-- This is called after sleep
+	OnSleep = function(self, hours)
+
+		-- All durational buffs wear off
+		for buff_id, buff in pairs(self.buffs.active) do
+			if (buff.IS_DURATIONAL) then
+				buff.duration = 0
+			end
+		end
+		for buff_id, buff in pairs(self.buffs.suspended) do
+			if (buff.IS_DURATIONAL) then
+				buff.duration = 0
+			end
+		end
+		
+		for name, limb in pairs(self.limbs) do
+		
+			-- Limb restores HP pool to the max
+			limb:SetMaxHP(limb.hp_max)
+			
+			-- Healthy limbs heal 10HP per hour of sleep
+			-- Destroyed limbs spend first 6 hours to restore, then 10HP per remaining hour
+			
+			if (limb:IsAlive()) then
+				limb:ApplyHeal(hours * 10)
+			elseif (hours > 6) then
+				limb:ApplyHeal((hours - 6) * 10)
+			end
+			
+		end
+	
+	end;
+	
+	-- ================================== PENALTIES ========================================
+	
+	OnJump = function(self)
+	
+		-- Update jump-related effects
+		for buff_id, buff in pairs(self.buffs.active.queue) do	
+			if (buff.OnJump) then
+				buff:OnJump()
+			end
+		end
+		
+	end;
+	
+	OnFootstep = function(self, material, power, hud_view, flags)
+		
+		-- Check if we are sprinting
+		local is_sprinting = IsMoveState('mcSprint')
+		
+		-- Update movement-related effects
+		for buff_id, buff in pairs(self.buffs.active.queue) do	
+			if (buff.OnFootstep) then
+				buff:OnFootstep(is_sprinting)
+			end
+		end
+		
+	end;
+	
+	OnHUDAnimationPlay = function(self, anm_table, obj)
+	
+		-- Update animation-related effects
+		for buff_id, buff in pairs(self.buffs.active.queue) do	
+			if (buff.OnAnimationStart) then
+				buff:OnAnimationStart(anm_table, obj)
+			end
+		end
+		
+	end;
+	
+	OnWeaponZoom = function(self)
+		
+		-- Update zoom-related effects
+		for buff_id, buff in pairs(self.buffs.active.queue) do	
+			if (buff.OnWeaponZoom) then
+				buff:OnWeaponZoom()
+			end
+		end
+		
+	end;
+	
+}
+
+local impact_removed
+
+function ImpactEffect(damage)
+
+	local opt = actor_effects.opt
+
+	if (not opt.enable_hit_impact_effect) then
+		if (not impact_removed) then
+			impact_removed = true
+			level.remove_pp_effector(2011)
+			level.remove_pp_effector(2016)
+		end
+		return
+	end
+	impact_removed = false
+	
+	if (damage > 5) then
+		level.add_pp_effector(opt.health.little_ppe ,2011, false)
+		level.set_pp_effector_factor(2011, damage)
+	end
+	
+	local impact_snd
+	local impact_anm
+	
+	if (damage > 50) then
+		level.add_pp_effector(opt.health.huge_ppe, 2016, false)
+		level.set_pp_effector_factor(2016, damage)
+		impact_anm = opt.health.huge_anm
+		impact_snd = opt.health.huge_snd
+	elseif (damage > 20) then
+		impact_cam = opt.health.middle_anm
+		impact_snd = opt.health.middle_snd
+	end
+	
+	-- Play impact cam effect
+	if (impact_cam) and (#impact_cam > 0) then
+		level.add_cam_effector("camera_effects\\" .. impact_cam[math.random(#impact_cam)] .. ".anm", 999, false, "", 0, false)
+	end
+	
+	-- Play impact sound effect
+	if (impact_snd) and (#impact_snd > 0) then
+		local snd_obj = sound_object("actor\\" .. impact_snd[math.random(#impact_snd)])
+		snd_obj:play(db.actor, 0, sound_object.s2d)
+	end
+	
+	-- Drop player's active item
+	-- if (math.random() < damage) then
+	--	local active_item = db.actor:active_item()
+	--	if active_item and (not opt.health.no_drop_wnp[active_item:section()]) then
+	--		db.actor:drop_item(active_item)
+	--	end
+	-- end
+	
+end
+
+
+-- Override sleep dialog function, to prevent sleeping while bleeding.
+local originalUISleep = ui_sleep_dialog.UISleep.TestAndShow
+ui_sleep_dialog.UISleep.TestAndShow = function(self, force)
+
+	if (not force) then
+	
+		if (CBuffBleedLight.ACTIVE > 0) or (CBuffBleedLightTemporary.ACTIVE > 0) or
+		   (CBuffBleedHeavy.ACTIVE > 0) or (CBuffBleedHeavyTemporary.ACTIVE > 0)
+		then
+			actor_menu.set_msg(1, game.translate_string("st_sleep_bleeding"), 4)
+			disable_info("sleep_active")
+			return
+		end
+		
+	end
+	
+	-- Otherwise, call original function
+	originalUISleep(self, force)
+end
+
+--==========================================================================================
+--========================================== Callbacks =====================================
+--==========================================================================================
+
+function OnKeyPressed(dik)
+	--[[
+	if dik == DIK_keys.DIK_H then
+		Body:ApplyDamage(Body.limbs.leg_left, 30, EHitTypes.Wound_2)
+		xr_sound.set_sound_play(db.actor:id(), "pda_tips")
+	elseif dik == DIK_keys.DIK_J then
+		Body:ApplyDamage(Body.limbs.arm_right, 30, EHitTypes.Wound_2)
+		xr_sound.set_sound_play(db.actor:id(), "pda_tips")
+	end
+	--]]
+end
+
+function ActorOnFirstUpdate()
+	Body:OnFirstUpdate()
+end 
+
+function ActorOnUpdate()
+	Body:OnUpdate()
+end
+
+function ActorOnFootstep(material, power, hud_view, flags)
+	Body:OnFootstep(material, power, hud_view, flags)
+end
+
+function ActorOnJump()
+	Body:OnJump()
+end
+
+function ActorOnSleep(hours)
+	Body:OnSleep(hours)
+end
+
+function ActorOnHUDAnimationPlay(anm_table, obj)
+	Body:OnHUDAnimationPlay(anm_table, obj)	
+end
+
+function ActorOnWeaponZoomIn()
+	Body.is_ads = true
+	Body:OnWeaponZoom()
+end
+
+function ActorOnWeaponZoomOut()
+	Body.is_ads = false
+	Body:OnWeaponZoom()
+end
+
+function OnSaveState(data)
+	Body:Save(data)
+end
+
+function OnLoadState(data)
+	Body:Load(data)
+end
+
+function on_game_start()
+
+	-- Main instance
+	_G.Body = CBody()
+
+	AddScriptCallback("efth_on_health_changed")
+	AddScriptCallback("efth_on_penalties_changed")
+	
+	AddScriptCallback("efth_on_buff_added")
+	AddScriptCallback("efth_on_buff_removed")
+	AddScriptCallback("efth_on_buff_expiring")
+	
+	RegisterScriptCallback("on_key_press", OnKeyPressed)
+	
+	RegisterScriptCallback("actor_on_update", ActorOnUpdate)
+	RegisterScriptCallback("actor_on_first_update", ActorOnFirstUpdate)
+	RegisterScriptCallback("actor_on_footstep", ActorOnFootstep)
+	RegisterScriptCallback("actor_on_jump", ActorOnJump)
+	RegisterScriptCallback("actor_on_sleep", ActorOnSleep)
+	RegisterScriptCallback("actor_on_hud_animation_play", ActorOnHUDAnimationPlay)
+	RegisterScriptCallback("actor_on_weapon_zoom_in", ActorOnWeaponZoomIn) 		
+	RegisterScriptCallback("actor_on_weapon_zoom_out", ActorOnWeaponZoomOut)
+		
+	RegisterScriptCallback("save_state", OnSaveState)
+	RegisterScriptCallback("load_state", OnLoadState)
+
+end

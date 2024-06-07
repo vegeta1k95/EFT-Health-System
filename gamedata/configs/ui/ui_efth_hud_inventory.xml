@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<w>
+	
+	<!-- Body parts -->
+	
+	<inventory_bg x="0" y="0" width="664" height="768" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_bg</texture>
+	</inventory_bg>
+	
+	<inventory_body x="0" y="0" width="512" height="768" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_body</texture>
+	</inventory_body>
+	
+	<inventory_arm_left x="372" y="174" width="85" height="267" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_arm_left</texture>
+	</inventory_arm_left>
+	
+	<inventory_arm_right x="174" y="187" width="117" height="196" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_arm_right</texture>
+	</inventory_arm_right>
+	
+	<inventory_torso x="258" y="141" width="151" height="163" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_torso</texture>
+	</inventory_torso>
+	
+	<inventory_head x="298" y="82" width="75"  height="86" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_head</texture>
+	</inventory_head>
+	
+	<inventory_stomach x="245" y="260" width="140" height="135" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_stomach</texture>
+	</inventory_stomach>
+	
+	<inventory_leg_left x="288" y="328" width="128" height="358" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_leg_left</texture>
+	</inventory_leg_left>
+	
+	<inventory_leg_right x="221" y="327" width="127" height="348" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_leg_right</texture>
+	</inventory_leg_right>
+	
+	<!-- Nameplates -->
+	
+	<inventory_hp_glow x="0" y="0" width="173" height="91" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_hp_glow</texture>
+	</inventory_hp_glow>
+	
+	<inventory_hp_bg x="21" y="41" width="131" height="27" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_hp_bg</texture>
+	</inventory_hp_bg>
+	
+	<inventory_hp_border x="26" y="47" width="122" height="15" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_hp_border</texture>
+	</inventory_hp_border>
+	
+	<inventory_hp_cross x="136" y="50" width="9" height="9" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_hp_cross</texture>
+	</inventory_hp_cross>
+	
+	<inventory_hp_fill x="28" y="49" width="117" height="11" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_hp_fill</texture>
+	</inventory_hp_fill>
+	
+	<inventory_name_bg x="23" y="23" width="128" height="21" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_name_bg</texture>
+	</inventory_name_bg>
+	
+	<inventory_name_txt x="28" y="23" width="128" height="21">
+		<text font="arial_14" align="l" vert_align="c" color="ui_2"/>
+	</inventory_name_txt>
+	
+	<inventory_hp_txt x="28" y="48" width="116" height="11">
+		<text font="arial_14" align="c" vert_align="c" color="ui_2"/>
+	</inventory_hp_txt>
+	
+	<inventory_effects_anchor x="24" y="66" width="131" height="27" la_alpha="1" stretch="1">
+	</inventory_effects_anchor>
+	
+	
+	<!-- Conditions -->
+	
+	<inventory_conditions_bg x="0" y="720" width="664" height="130" la_alpha="1" stretch="1"/>
+	
+	<inventory_cond_health_bg 	x="0" 	y="0" width="120" height="40" la_alpha="1" stretch="1"/>
+	<inventory_cond_health_icon x="6" 	y="5" width="30"  height="30" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_cond_health_icon</texture>
+	</inventory_cond_health_icon>
+	<inventory_cond_health 		x="50" y="0" width="40"   height="40">
+		<text font="letterica25" align="r" vert_align="c" color="ui_2"/>
+	</inventory_cond_health>
+	<inventory_cond_health_max  x="80" y="2" width="40"   height="40">
+		<text font="arial_14" 	 align="r" vert_align="b" color="ui_2"/>
+	</inventory_cond_health_max>
+	<inventory_cond_health_delta  x="94" y="2" width="28"   height="40">
+		<text font="arial_14" 	 align="r" vert_align="t" color="ui_2"/>
+	</inventory_cond_health_delta>
+	
+	<inventory_cond_energy_bg 		x="348"	y="60" width="120" height="40" la_alpha="1" stretch="1"/>
+	<inventory_cond_energy_icon 	x="10" 	y="5"  width="30"  height="30" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_cond_energy_icon</texture>
+	</inventory_cond_energy_icon>
+	<inventory_cond_energy 		x="50" y="0" width="40"   height="40">
+		<text font="letterica25" align="r" vert_align="c" color="ui_2"/>
+	</inventory_cond_energy>
+	<inventory_cond_energy_max  x="80" y="2" width="40"   height="40">
+		<text font="arial_14" 	 align="r" vert_align="b" color="ui_2"/>
+	</inventory_cond_energy_max>
+	<inventory_cond_energy_delta  x="94" y="2" width="28"   height="40">
+		<text font="arial_14" 	 align="r" vert_align="t" color="ui_2"/>
+	</inventory_cond_energy_delta>
+	
+	<inventory_cond_hydration_bg   	x="196"	y="60" width="120" height="40" la_alpha="1" stretch="1"/>
+	<inventory_cond_hydration_icon 	x="10" 	y="5"  width="30"  height="30" la_alpha="1" stretch="1">
+		<texture>ui_efth_inventory_cond_hydrat_icon</texture>
+	</inventory_cond_hydration_icon>
+	<inventory_cond_hydration 	  x="50" y="0" width="40"   height="40">
+		<text font="letterica25" align="r" vert_align="c" color="ui_2"/>
+	</inventory_cond_hydration>
+	<inventory_cond_hydration_max x="80" y="2" width="40"   height="40">
+		<text font="arial_14"	 align="r" vert_align="b" color="ui_2"/>
+	</inventory_cond_hydration_max>
+	<inventory_cond_hydration_delta x="94" y="2" width="28" height="40">
+		<text font="arial_14" 	 align="r" vert_align="t" color="ui_2"/>
+	</inventory_cond_hydration_delta>
+	
+	
+	
+</w>

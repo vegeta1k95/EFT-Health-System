@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<vignette_blood x="0" y="0" width="1920" height="1080" la_alpha="1" stretch="1">
+	<texture>ui_efth_vignette_blood</texture>
+</vignette_blood>
+
+<vignette_pain x="0" y="0" width="1131" height="707" la_alpha="1" stretch="1">
+	<texture>ui_efth_vignette_pain</texture>
+</vignette_pain>

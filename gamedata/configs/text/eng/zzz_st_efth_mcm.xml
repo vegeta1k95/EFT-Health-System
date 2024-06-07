@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	
+	<string id="ui_mcm_menu_efth"><text>EFT Health</text></string>
+	<string id="ui_mcm_efth_title"><text>EFT Health</text></string>
+	
+	<string id="ui_mcm_efth_general_damage_multiplier"><text>Damage multiplier</text></string>
+	<string id="ui_mcm_efth_general_campfire_heal"><text>Healing from campfires</text></string>
+	
+	<string id="ui_mcm_efth_inv_bg_alpha"><text>Background Transparency</text></string>
+	<string id="ui_mcm_efth_inv_show_conditions"><text>Health/Thirst/Hunger Indicators</text></string>
+
+	<string id="ui_mcm_efth_overlay_visibility"><text>Visibility</text></string>
+	<string id="ui_mcm_lst_efth_visible"><text>Always</text></string>
+	<string id="ui_mcm_lst_efth_automatic"><text>Automatic</text></string>
+	<string id="ui_mcm_lst_efth_hidden"><text>Never</text></string>
+
+	<string id="ui_mcm_efth_overlay_autohide_delay"><text>Hide After (sec.)</text></string>
+
+	<string id="ui_mcm_efth_overlay_coloring"><text>Coloring</text></string>
+	<string id="ui_mcm_lst_efth_monotonic"><text>Monotone</text></string>
+	<string id="ui_mcm_lst_efth_colorful"><text>Colorful</text></string>
+
+	<string id="ui_mcm_efth_overlay_offset_x"><text>Position X</text></string>
+	<string id="ui_mcm_efth_overlay_offset_y"><text>Position Y</text></string>
+
+	<string id="ui_mcm_efth_items_names"><text>Show Medication Names</text></string>
+	<string id="ui_mcm_efth_items_dont_stack"><text>Prevent Medication Stacking</text></string>
+	
+</string_table>

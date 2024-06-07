@@ -1,0 +1,320 @@
+local gc = game.translate_string
+
+local strsub = string.sub
+local strlen = string.len
+local floor = math.floor
+
+local class = zzz_efth_lua.class
+local Colors = zzz_efth_utils.Colors
+
+-- ============================ String utils ==================================
+
+-- Concatenate string arguments with a delimiter
+function Concat(...)
+
+	local args = {...}
+
+	local delimiter = " "
+	local str = ""
+	
+	for i=1, #args do
+		str = str .. args[i] .. delimiter
+	end
+	
+	return TrimStr(str)
+end
+
+-- Wrap string with a color
+function ColorWrap(str, color)
+	return color:GetString() .. str .. Colors.TOOLTIP_DEFAULT:GetString()
+end
+
+-- Trim string from both sides
+function TrimStr(str)
+	
+	-- Trim left
+	local l = 1
+	while strsub(str,l,l) == ' ' do
+		l = l + 1
+	end
+	
+	-- Trim right
+	local r = strlen(str)
+	while strsub(str,r,r) == ' ' do
+		r = r - 1
+	end
+	
+	return strsub(str,l,r)
+end
+
+-- Make a proper time string from the given amount of milliseconds.
+function TimeString(total_ms)
+	local total_seconds = total_ms / 1000
+	local result = ""
+	local minutes = floor((total_seconds % 3600)/60)
+	local seconds = floor((total_seconds % 60))
+	
+	if minutes > 0 then
+		result = Concat(result, minutes, gc("efth_min")) .. " "
+	end
+	
+	if seconds > 0 then
+		result = Concat(result, seconds, gc("efth_sec"))
+	end
+	
+	return TrimStr(result)
+end
+
+class "CStringBuilder"
+{
+	__init = function(self)
+		self.str = ""
+		self.delimiter = " "
+	end;
+	
+	Append = function(self, item, color, skip_delimiter)
+		
+		if (color) then
+			self.str = self.str .. color:GetString()
+		end
+		
+		if (skip_delimiter) then
+			self.str = self.str .. item .. Colors.TOOLTIP_DEFAULT:GetString() 
+		else
+			self.str = self.str .. item .. Colors.TOOLTIP_DEFAULT:GetString() .. self.delimiter
+		end
+		
+		return self
+	end;
+	
+	Trim = function(self)
+		if (self.str) then
+			self.str = TrimStr(self.str)
+		end
+		return self
+	end;
+}
+
+-- ================================= Tooltip footer ==================================
+
+class "CItemFooter"
+{
+	__init = function(self, desc)
+		self.desc = desc
+	end;
+		
+	AddTitle = function(self, title)
+		self.desc = self.desc .. Concat(Colors.WHITE:GetString(), title, "\\n")
+	end;
+	
+	AddItem = function(self, item, clr)
+		local color = clr or Colors.TOOLTIP_DEFAULT	
+		local color_str = color:GetString()
+		self.desc = self.desc .. Concat(color_str, gc("efth_bullet") .. " ", item, " \\n")
+	end;
+}
+
+BuildFooter = ui_item.build_desc_footer
+function ui_item.build_desc_footer(obj, sec, str)
+
+	local desc = BuildFooter(obj, sec, str)
+	local footer = CItemFooter(desc)
+	
+	local item = CItem(obj)
+	
+	if (item.is_limb_specific) then
+		footer:AddTitle(gc("efth_limb"))
+		
+		if (item.cache.can_heal > 0) then
+			local builder = CStringBuilder()
+			builder:Append(gc("efth_heals"), Colors.TOOLTIP_GREEN)
+			builder:Append("-")
+			builder:Append(item.cache.can_heal, Colors.TOOLTIP_BLUE)
+			footer:AddItem(builder:Trim().str)
+		end
+		
+		if (item.cache.cost_restore_limb > 0) then
+			local builder = CStringBuilder()
+			builder:Append(gc("efth_restores"), Colors.TOOLTIP_GREEN)
+			footer:AddItem(builder:Trim().str)
+		end
+		
+		if (item.cache.cost_remove_bleed_light > 0) then
+			local builder = CStringBuilder()
+			builder:Append(gc("efth_removes"))
+			builder:Append(gc("efth_light_bleeding"), Colors.TOOLTIP_RED) 
+			builder:Append("-")
+			builder:Append(item.cache.cost_remove_bleed_light, Colors.TOOLTIP_BLUE)
+			footer:AddItem(builder:Trim().str)
+		end
+		
+		if (item.cache.cost_remove_bleed_heavy > 0) then
+			local builder = CStringBuilder()
+			builder:Append(gc("efth_removes"))
+			builder:Append(gc("efth_heavy_bleeding"), Colors.TOOLTIP_RED) 
+			builder:Append("-")
+			builder:Append(item.cache.cost_remove_bleed_heavy, Colors.TOOLTIP_BLUE)
+			footer:AddItem(builder:Trim().str)
+		end
+		
+		if (item.cache.cost_remove_fracture > 0) then
+			local builder = CStringBuilder()
+			builder:Append(gc("efth_removes"))
+			builder:Append(gc("efth_fracture"), Colors.TOOLTIP_RED) 
+			builder:Append("-")
+			builder:Append(item.cache.cost_remove_fracture, Colors.TOOLTIP_BLUE)
+			footer:AddItem(builder:Trim().str)
+		end
+		
+	end
+	
+	if (item.is_booster) then
+		footer:AddTitle(gc("efth_effects"))
+			
+		if (item.cache.remove_pain > 0) then
+			local builder = CStringBuilder()
+			builder:Append(gc("efth_adds"))
+			builder:Append(gc("efth_painkiller"), Colors.TOOLTIP_GREEN) 
+			builder:Append("-")
+			builder:Append(TimeString(item.cache.remove_pain), Colors.TOOLTIP_YELLOW)
+			footer:AddItem(builder:Trim().str)
+		end
+		
+		if (item.cache.remove_concussion > 0) then
+			local builder = CStringBuilder()
+			builder:Append(gc("efth_removes"))
+			builder:Append(gc("efth_concussion"), Colors.TOOLTIP_RED) 
+			builder:Append("-")
+			builder:Append(TimeString(item.cache.remove_concussion), Colors.TOOLTIP_YELLOW)
+			footer:AddItem(builder:Trim().str)
+		end
+		
+		if (item.cache.remove_bleed > 0) then
+			local builder = CStringBuilder()
+			builder:Append(gc("efth_removes"))
+			builder:Append(gc("efth_bleed"), Colors.TOOLTIP_RED) 
+			builder:Append("-")
+			builder:Append(TimeString(item.cache.remove_bleed), Colors.TOOLTIP_YELLOW)
+			footer:AddItem(builder:Trim().str)
+		end
+		
+		if (item.cache.apply_tremor_duration > 0) then
+			local builder = CStringBuilder()
+			builder:Append(gc("efth_adds"))
+			builder:Append(gc("efth_tremor"), Colors.TOOLTIP_RED) 
+			builder:Append("-")
+			builder:Append(TimeString(item.cache.apply_tremor_duration), Colors.TOOLTIP_YELLOW)
+			builder:Append(gc("efth_delay"))
+			builder:Append("-")
+			builder:Append(TimeString(item.cache.apply_tremor_delay), Colors.TOOLTIP_YELLOW)
+			footer:AddItem(builder:Trim().str)
+		end
+		
+		if (item.cache.apply_concussion_duration > 0) then
+			local builder = CStringBuilder()
+			builder:Append(gc("efth_adds"))
+			builder:Append(gc("efth_concussion"), Colors.TOOLTIP_RED) 
+			builder:Append("-")
+			builder:Append(TimeString(item.cache.apply_concussion_duration), Colors.TOOLTIP_YELLOW)
+			builder:Append(gc("efth_delay"))
+			builder:Append("-")
+			builder:Append(TimeString(item.cache.apply_concussion_delay), Colors.TOOLTIP_YELLOW)
+			footer:AddItem(builder:Trim().str)
+		end
+		
+		-- Apply skills buffs
+		for skill, _ in pairs(Body.skills) do
+			
+			local prefix_delay 	  		= "skill_" .. skill .. "_delay"
+			local prefix_duration 		= "skill_" .. skill .. "_duration"
+			local prefix_amount   		= "skill_" .. skill .. "_amount"
+			
+			local skill_delay 	 = item.cache[prefix_delay]
+			local skill_duration = item.cache[prefix_duration]
+			local skill_amount 	 = item.cache[prefix_amount]
+			
+			if (skill_amount ~= 0) then
+				
+				local builder = CStringBuilder()
+				builder:Append(gc("efth_skill"))
+				builder:Append(gc("efth_skill_" .. skill), Colors.TOOLTIP_BLUE)
+				builder:Append("(", nil, true)
+				if (skill_amount > 0) then
+					builder:Append("+" .. skill_amount, Colors.TOOLTIP_GREEN, true)
+				else
+					builder:Append(skill_amount, Colors.TOOLTIP_RED, true)
+				end
+				builder:Append(")")
+				builder:Append("-")
+				builder:Append(TimeString(skill_duration) .. ",", Colors.TOOLTIP_YELLOW)
+				builder:Append(gc("efth_delay"))
+				builder:Append("-")
+				builder:Append(TimeString(skill_delay), Colors.TOOLTIP_YELLOW)
+				footer:AddItem(builder:Trim().str)
+				
+			end
+		end
+		
+		for condition_name, _ in pairs(Body.conditions) do
+					
+			local flat_amount 	  	   	   = item.cache[condition_name] 
+			local flat_amount_max		   = item.cache[condition_name .. "_max"]
+			local flat_amount_max_duration = item.cache[condition_name .. "_max_duration"]
+						
+			local regen_delay 	 = item.cache[condition_name .. "_per_second_delay"]
+			local regen_duration = item.cache[condition_name .. "_per_second_duration"]
+			local regen_amount 	 = item.cache[condition_name .. "_per_second_amount"]
+			
+			if (flat_amount ~= 0) then
+				local builder = CStringBuilder()
+				builder:Append(gc("efth_condition_" .. condition_name))
+				builder:Append("(", nil, true)
+				if (flat_amount > 0) then
+					builder:Append("+" .. flat_amount, Colors.TOOLTIP_GREEN, true)
+				else
+					builder:Append(flat_amount, Colors.TOOLTIP_RED, true)
+				end
+				builder:Append(")")
+				footer:AddItem(builder:Trim().str)
+			end
+			
+			if (flat_amount_max ~= 0) then
+				local builder = CStringBuilder()
+				builder:Append(gc("efth_max"))
+				builder:Append(gc("efth_condition_" .. condition_name))
+				builder:Append("(", nil, true)
+				if (flat_amount_max > 0) then
+					builder:Append("+" .. flat_amount_max, Colors.TOOLTIP_GREEN, true)
+				else
+					builder:Append(flat_amount_max, Colors.TOOLTIP_RED, true)
+				end
+				builder:Append(")")
+				builder:Append("-")
+				builder:Append(TimeString(flat_amount_max_duration) .. ",", Colors.TOOLTIP_YELLOW)
+				footer:AddItem(builder:Trim().str)
+			end
+			
+			if (regen_amount ~= 0) then
+				local builder = CStringBuilder()
+				builder:Append(gc("efth_condition_regen_" .. condition_name))
+				builder:Append("(", nil, true)
+				if (regen_amount > 0) then
+					builder:Append("+" .. regen_amount, Colors.TOOLTIP_GREEN, true)
+				else
+					builder:Append(regen_amount, Colors.TOOLTIP_RED, true)
+				end
+				builder:Append("/" .. gc("efth_sec") .. ")")
+				builder:Append("-")
+				builder:Append(TimeString(regen_duration) .. ",", Colors.TOOLTIP_YELLOW)
+				builder:Append(gc("efth_delay"))
+				builder:Append("-")
+				builder:Append(TimeString(regen_delay), Colors.TOOLTIP_YELLOW)
+				footer:AddItem(builder:Trim().str)
+			end
+			
+		end
+		
+	end
+	
+	return footer.desc
+end

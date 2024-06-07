@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<w>
+
+	<background x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_background</texture>
+	</background>
+	
+	<counter_text x="0" y="0" width="10" height="10">
+        <text font="arial_14" align="r" vert_align="t" color="ui_2"/>
+    </counter_text>
+
+	<effect_bleed_light x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_bleed_light</texture>
+	</effect_bleed_light>
+	
+	<effect_bleed_heavy x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_bleed_heavy</texture>
+	</effect_bleed_heavy>	
+	
+	<effect_fresh_wound x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_fresh_wound</texture>
+	</effect_fresh_wound>
+	
+	<effect_fracture x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_fracture</texture>
+	</effect_fracture>
+	
+	<effect_pain x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_pain</texture>
+	</effect_pain>
+	
+	<effect_painkiller x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_painkiller</texture>
+	</effect_painkiller>
+	
+	<effect_tremor x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_tremor</texture>
+	</effect_tremor>
+	
+	<effect_thirst x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_thirst</texture>
+	</effect_thirst>
+	
+	<effect_hunger x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_hunger</texture>
+	</effect_hunger>
+	
+	<effect_buff x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_buff</texture>
+	</effect_buff>
+	
+	<effect_debuff x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_debuff</texture>
+	</effect_debuff>
+	
+	<effect_concussion x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_concussion</texture>
+	</effect_concussion>
+	
+</w>

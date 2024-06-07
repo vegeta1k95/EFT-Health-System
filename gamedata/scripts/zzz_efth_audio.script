@@ -1,0 +1,16 @@
+local CValueAnimator = zzz_efth_utils.CValueAnimator
+
+VOLUME_ANIMATOR = CValueAnimator()
+VOLUME_ANIMATOR.OnValueChanged = function(value)
+	exec_console_cmd("snd_volume_eff " .. value)
+end
+
+function ActorOnUpdate()
+	-- Continious update of decals
+	VOLUME_ANIMATOR:Update(time_global())
+end
+
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_update", ActorOnUpdate)
+end

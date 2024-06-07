@@ -1,0 +1,9 @@
+<w>
+    <medicine_name x="0" y="0" width="10" height="10">
+        <text font="arial_14" align="r" vert_align="t" color="ui_2"/>
+    </medicine_name>
+	
+	<medicine_uses x="0" y="0" width="10" height="10">
+        <text font="arial_14" align="r" vert_align="b" color="ui_2"/>
+    </medicine_uses>
+</w>

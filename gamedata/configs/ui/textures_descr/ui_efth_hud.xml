@@ -1,0 +1,59 @@
+<w>		
+	<file name="ui\ui_efth_hud_overlay">
+		<texture id="ui_efth_overlay_bg"  			x="59" 	y="1" 	width="148" height="264"/>
+		<texture id="ui_efth_overlay_head"  		x="209" y="166"	width="41"	height="45"/>
+		<texture id="ui_efth_overlay_torso"  		x="209"	y="1"	width="60"  height="64"/>
+		<texture id="ui_efth_overlay_stomach"  		x="1" 	y="1" 	width="56"  height="50"/>
+		<texture id="ui_efth_overlay_arm_left"  	x="1"	y="67"	width="47"  height="98"/>
+		<texture id="ui_efth_overlay_arm_right"  	x="209" y="67"	width="45"  height="97"/>
+		<texture id="ui_efth_overlay_leg_left"  	x="271"	y="1"	width="50"  height="170"/>
+		<texture id="ui_efth_overlay_leg_right"  	x="1"	y="173"	width="48"  height="129"/>
+	</file>
+	
+	<file name="ui\ui_efth_hud_inventory">
+		<texture id="ui_efth_inventory_bg"				 x="724" y="732" width="125" height="9"/>
+		<texture id="ui_efth_inventory_body"			 x="207" y="1" 	 width="512" height="768"/>
+		<texture id="ui_efth_inventory_arm_left"		 x="1" 	 y="1" 	 width="85"  height="267"/>
+		<texture id="ui_efth_inventory_arm_right"	 	 x="88"  y="1" 	 width="117" height="196"/>
+		<texture id="ui_efth_inventory_torso"			 x="721" y="1" 	 width="151" height="163"/>
+		<texture id="ui_efth_inventory_head"			 x="721" y="166" width="75"  height="86"/>
+		<texture id="ui_efth_inventory_leg_left"		 x="798" y="166" width="128" height="358"/>
+		<texture id="ui_efth_inventory_leg_right"		 x="1" 	 y="526" width="127" height="348"/>
+		<texture id="ui_efth_inventory_stomach"			 x="721" y="526" width="140" height="135"/>
+		<texture id="ui_efth_inventory_hp_glow"			 x="721" y="663" width="128" height="64"/>
+		<texture id="ui_efth_inventory_hp_bg"			 x="721" y="729" width="131" height="25"/>
+		<texture id="ui_efth_inventory_hp_border"		 x="721" y="756" width="94"  height="13"/>
+		<texture id="ui_efth_inventory_hp_cross"		 x="874" y="1" 	 width="9"   height="9"/>
+		<texture id="ui_efth_inventory_hp_fill"			 x="721" y="779" width="116" height="9"/>
+		<texture id="ui_efth_inventory_name_bg"			 x="130" y="771" width="128" height="21"/>
+		<texture id="ui_efth_inventory_cond_health_icon" x="873" y="809" width="22"	 height="22"/>
+		<texture id="ui_efth_inventory_cond_energy_icon" x="798" y="810" width="20"	 height="20"/>
+		<texture id="ui_efth_inventory_cond_hydrat_icon" x="830" y="810" width="20"	 height="20"/>
+		
+	</file>
+	
+	<file name="ui\ui_efth_hud_effects">
+		<texture id="ui_efth_hud_effect_background"		x="0"	y="0"	width="1"	height="1"/>
+		<texture id="ui_efth_hud_effect_bleed_heavy"	x="27" 	y="49" 	width="24"  height="22"/>
+		<texture id="ui_efth_hud_effect_bleed_light" 	x="53" 	y="49"	width="24"	height="22"/>
+		<texture id="ui_efth_hud_effect_fresh_wound" 	x="53"  y="73"	width="24"	height="22"/>
+		<texture id="ui_efth_hud_effect_fracture" 		x="1"   y="49"	width="24"	height="22"/>
+		<texture id="ui_efth_hud_effect_pain" 			x="27"	y="97"	width="24"	height="22"/>
+		<texture id="ui_efth_hud_effect_painkiller" 	x="53"	y="97"	width="24"	height="22"/>
+		<texture id="ui_efth_hud_effect_tremor" 		x="105"	y="49"	width="24"	height="22"/>
+		<texture id="ui_efth_hud_effect_thirst"			x="1" 	y="25"	width="24"	height="22"/>
+		<texture id="ui_efth_hud_effect_hunger"			x="53" 	y="25"	width="24"	height="22"/>
+		<texture id="ui_efth_hud_effect_buff"			x="53"  y="1"	width="24"  height="22"/>
+		<texture id="ui_efth_hud_effect_debuff"			x="79" 	y="1"	width="24"  height="22"/>
+		<texture id="ui_efth_hud_effect_concussion"		x="1"	y="1"	width="24"  height="22"/>
+	</file>
+	
+	<file name="ui\ui_efth_vignette_blood">
+		<texture id="ui_efth_vignette_blood"			x="0"	y="0"	width="1920"	height="1080"/>
+	</file>
+	
+	<file name="ui\ui_efth_vignette_pain">
+		<texture id="ui_efth_vignette_pain"				x="0"	y="0"	width="1131"	height="707"/>
+	</file>
+	
+</w>

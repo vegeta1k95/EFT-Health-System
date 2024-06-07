@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="windows-1251"?>
+
+<!--
+	Medical Items + Drugs
+-->
+
+<string_table>
+	
+	<string id="st_bandage"><text>Бинт стерильный</text></string>
+	<string id="st_bandage_short"><text>Бинт</text></string>
+	<string id="st_bandage_descr">
+		<text>Обыкновенный марлевый бинт, стерильный.\n \n
+		</text>
+	</string>
+
+	
+	<string id="st_jgut_zhgut"><text>Жгут Эсмарха</text></string>
+	<string id="st_jgut_short"><text>Жгут</text></string>
+	<string id="st_jgut_descr">
+		<text>Кровоостанавливающий резиновый жгут. При обычном кровотечении позволяет перевязать рану, при артериальном - перетянуть артерию.\n \n</text>
+	</string>
+
+	
+	<string id="st_medkit"><text>Аптечка АИ-2</text></string>
+	<string id="st_medkit_short"><text>АИ-2</text></string>
+	<string id="st_medkit_descr">
+		<text>Была разработана как штатное средство первой медицинской помощи для силовых структур и сил гражданской обороны в СССР. В условиях тотального военного конфликта с применением оружия массового поражения должна была быть роздана гражданскому населению в зонах, близких к очагам поражения.\n \n</text>
+	</string>
+	
+	
+	<string id="st_medkit_army"><text>Аптечка АИ-2 (армейская)</text></string>
+	<string id="st_medkit_army_short"><text>АИ-2В</text></string>
+	<string id="st_medkit_army_descr">
+		<text>Специализированный медицинский набор для оказания первой помощи при ранениях на поле боя. В набор входят средства для ускорения свёртывания крови на основе «Менадиона», обезболивающие, антибиотики и стимуляторы иммунитета; кроме того, здесь имеется простейший хирургический набор для извлечения осколков и пуль. Стандартная армейская аптечка, стоящая на обеспечении спецназа и ряда войск, направленных на исследование Зоны Отчуждения. Пользуется большой популярностью среди бойцов «Долга».\n \n</text>
+	</string>
+	
+	
+	<string id="st_medkit_science"><text>Аптечка АИ-2 (научная)</text></string>
+	<string id="st_medkit_scientic_short"><text>АИ-2У</text></string>
+	<string id="st_medkit_science_descr">
+		<text>Медицинский набор, разработанный специально для научных сотрудников, которые работают в условиях Зоны. Содержит средства как для заживления механических травм, так и для предотвращения развития лучевой болезни. В отличие от других наборов, в этом можно найти «Викасол», «Батилол» и С-нафтизин.\n \n</text>
+	</string>
+	
+	
+	<string id="st_adrenalin"><text>Шприц с адреналином</text></string>
+	<string id="st_adrenalin_short"><text>Адреналин</text></string>
+	<string id="st_adrenalin_descr">
+		<text>Стерильный одноразовый шприц с дозой адреналина - основного гормона мозгового вещества надпочечников. Используется для усиления физиологической реакции, связанной с подготовкой всех мышц к повышенной активности. Временно повышает силу, выносливость. Снимает ощущение боли.\n \n</text>
+	</string>
+		
+		
+	<string id="st_morphine"><text>Шприц с морфием</text></string>
+	<string id="st_morphine_short"><text>Морфий</text></string>
+	<string id="st_morphine_descr">
+		<text>Стерильный одноразовый шприц с дозой морфия - сильного наркотического анальгетика, применяющегося для снятия сильных болевых ощущений, как острых, так и хронических.\n \n</text>
+	</string>
+
+	<string id="st_antirad_short"><text>Антирад</text></string>
+	<string id="st_drug_coagulant_short"><text>Барвинок</text></string>
+	<string id="st_drug_anabiotic_short"><text>Анабиотик</text></string>
+	<string id="st_drug_psy_blockade_short"><text>Пси.блок</text></string>
+	<string id="st_drug_antidot_short"><text>Антидот</text></string>
+	<string id="st_drug_booster_short"><text>Геркулес</text></string>
+	<string id="st_drug_radioprotector_short"><text>Радиопрот.</text></string>
+	<string id="st_drug_sleepingpills_short"><text>Снотворное</text></string>
+	<string id="st_akvatab_short"><text>Акватабс</text></string>
+	<string id="st_medkit_ai1_short"><text>Мед.набор</text></string>
+	<string id="st_medkit_ai2_short"><text>Арм.набор</text></string>	
+	<string id="st_medkit_ai3_short"><text>Уч.набор</text></string>
+	<string id="st_analgetic_short"><text>Диклофенак</text></string>
+	<string id="st_yadylin_short"><text>Йадулин</text></string>
+	<string id="st_glucose_s_short"><text>Глюкоза</text></string>
+	<string id="st_glucose_short"><text>Глюкоза</text></string>
+	<string id="st_stimpack_short"><text>Cтимпак</text></string>
+	<string id="st_stimpack_army_short"><text>Стимпак</text></string>
+	<string id="st_stimpack_scientic_short"><text>Стимпак</text></string>
+	<string id="st_cocaine_short"><text>Кокаин</text></string>
+	<string id="st_salicidic_acid_short"><text>Аспирин</text></string>
+	<string id="st_caffeine_short"><text>Кофеин</text></string>
+	<string id="st_antirad_cystamine_short"><text>Цистамин</text></string>
+	<string id="st_antibio_sulfad_short"><text>Детоксин</text></string>
+	<string id="st_antibio_chlor_short"><text>Антибио.</text></string>
+	<string id="st_antiemetic_short"><text>Этаперазин</text></string>
+	<string id="st_joint_short"><text>Конопля</text></string>
+	<string id="st_rebirth_short"><text>Нарко</text></string>
+	<string id="st_tetanus_short"><text>Фентанил</text></string>
+	<string id="st_antirad_kalium_short"><text>Калий.йод</text></string>
+	<string id="st_marijuana_short"><text>Марихуана</text></string>
+	<string id="st_survival_kit_short"><text>Набор.выж.</text></string>	
+	
+</string_table>

@@ -1,0 +1,635 @@
+local InitStatic = zzzz_efth_hud_common.InitStatic
+local InitTextWnd = zzzz_efth_hud_common.InitTextWnd
+local CorrectRatio = zzzz_efth_hud_common.CorrectRatio
+local CenterHorizontal = zzzz_efth_hud_common.CenterHorizontal
+local CenterVertical = zzzz_efth_hud_common.CenterVertical
+local GetConfig = zzz_efth_mcm.GetConfig
+
+local CValueAnimator = zzz_efth_utils.CValueAnimator
+
+local ClassUI = class
+local class = zzz_efth_lua.class
+
+-- Main inventory HUD instance
+HUD = nil
+
+-- ================================ Constants =================================
+
+-- NOTE: Update interval needs to be low for smoother ValueAnimator`s animations.
+-- 		 If you prefer more FPS and you not bothered by "jumpy" value animations,
+--	     change to bigger value
+HUD_UPDATE_INTERVAL = 10
+
+-- If HUD's background will be visible (black) or completely transparent.
+HUD_TRANSPARENT_BACKGROUND = false
+
+-- ============================================================================
+-- =============================== Nameplates =================================
+-- ============================================================================
+
+-- 16:9
+NAMEPLATE_POSITION = {
+	head 	  = {x=379, y=74},
+	torso 	  = {x=241, y=173},
+	stomach   = {x=241, y=259},
+	arm_left  = {x=418, y=259},
+	arm_right = {x=64,  y=259},
+	leg_left  = {x=360, y=415},
+	leg_right = {x=122, y=415},
+}
+
+NAMEPLATE_MAX_FILL_WIDTH = 0
+
+class "CUILimbNameplate" 
+{
+	__init = function(self, xml, name, parent)
+		
+		self.glow 		= InitStatic(xml,  "inventory_hp_glow",   parent)	
+		self.hp_bg		= InitStatic(xml,  "inventory_hp_bg", 	  self.glow)	
+		self.hp_border 	= InitStatic(xml,  "inventory_hp_border", self.glow)
+		self.hp_fill 	= InitStatic(xml,  "inventory_hp_fill",   self.glow)	
+		self.hp_cross 	= InitStatic(xml,  "inventory_hp_cross",  self.glow)	
+		self.name_bg 	= InitStatic(xml,  "inventory_name_bg",   self.glow)
+		self.name_text 	= InitTextWnd(xml, "inventory_name_txt",  self.glow)
+		self.hp_text 	= InitTextWnd(xml, "inventory_hp_txt", 	  self.glow)
+		self.anchor		= InitStatic(xml,  "inventory_effects_anchor", self.glow)
+		
+		NAMEPLATE_MAX_FILL_WIDTH = self.hp_fill:GetWidth()
+		
+		local x = NAMEPLATE_POSITION[name].x
+		local y = NAMEPLATE_POSITION[name].y
+		
+		-- Position correctly 
+		self.glow:SetWndPos(CorrectRatio(vector2():set(x, y)))
+		self.glow:SetTextureColor(Colors.TRANSPARENT:GetInt())
+		
+		-- Cross off by default
+		self.hp_cross:Show(false)
+		
+		-- Set limb name
+		self.name_text:SetText(game.translate_string("efth_" .. name))
+		
+		-- Set limb HP
+		self.hp_text:SetText("0/0")
+	
+	end;
+	
+	SetHP = function(self, hp, hp_max)
+	
+		if (hp > 0) then
+			local percent = hp / hp_max
+			local h = self.hp_fill:GetHeight()
+			local w = math.ceil(NAMEPLATE_MAX_FILL_WIDTH * percent)
+			local color = Colors.LerpHSV(Colors.INVENTORY_HP_RED, Colors.INVENTORY_HP_GREEN, percent):GetInt()
+			
+			self.hp_cross:Show(false)
+			self.hp_fill:Show(true)
+			self.hp_fill:SetWndSize(vector2():set(w, h))
+			self.hp_fill:SetTextureColor(color)
+			self.hp_border:SetTextureColor(Colors.WHITE:GetInt())
+			
+			if (percent < 0.1) then
+				self.hp_text:SetTextColor(Colors.INVENTORY_HP_RED:GetInt())
+			else
+				self.hp_text:SetTextColor(Colors.INVENTORY_TEXT:GetInt())
+			end
+			
+		else
+			self.hp_cross:Show(true)
+			self.hp_fill:Show(false)
+			self.hp_border:SetTextureColor(Colors.INVENTORY_HP_RED:GetInt())
+			self.hp_text:SetTextColor(Colors.INVENTORY_HP_RED:GetInt())
+		end
+		
+		-- Set HP text
+		self.hp_text:SetText(math.ceil(hp) .. "/" .. hp_max)
+	
+	end;
+	
+	ToggleCross = function(self, enabled)
+		self.hp_cross:Show(enabled)
+	end;
+	
+	ToggleGlow = function(self, enabled)
+		if (enabled) then
+			self.glow:SetTextureColor(Colors.WHITE:GetInt())
+		else
+			self.glow:SetTextureColor(Colors.TRANSPARENT:GetInt())
+		end
+	end;
+	
+}
+
+-- ============================================================================
+-- ================================== Limbs ===================================
+-- ============================================================================
+
+class "CUILimb"
+{
+	__init = function(self, xml, name, parent)
+		self.name = name
+		self.static = InitStatic(xml, "inventory_" .. name, parent)
+		self.static:SetTextureColor(Colors.INVENTORY_DEF:GetInt())
+		
+		self.nameplate = CUILimbNameplate(xml, name, parent)
+		self.effects_list = CUIEffectsList(true, self.nameplate.anchor, 0)
+		self.effects_list:Refresh()
+		
+		self.hp_max = 0
+		
+		-- Some pretty animated values
+		self.hp = CValueAnimator()
+		self.hp.OnValueChanged = function(hp)
+			
+			-- Update static color
+			if (hp > 0) then
+				local percent = hp / self.hp_max
+				local color = Colors.LerpHSV(Colors.INVENTORY_RED, Colors.INVENTORY_DEF, percent):GetInt()
+				self.static:SetTextureColor(color)
+			else
+				self.static:SetTextureColor(Colors.BLACK:GetInt())
+			end
+
+			-- Update nameplate
+			self.nameplate:SetHP(hp, self.hp_max)
+		end;
+		
+	end;
+	
+	SetHP = function(self, hp, hp_max)
+		self.hp_max = hp_max
+		self.hp:Set(hp, 300)
+	end;
+
+}
+
+-- ============================================================================
+-- =============================== Conditions =================================
+-- ============================================================================
+
+class "CUICondition"
+{
+	__init = function(self, name, xml, parent, color, is_delta)
+		
+		self.name 		= name
+		self.background = InitStatic(xml,  "inventory_cond_" .. name .. "_bg", 	 parent)
+		self.icon 		= InitStatic(xml,  "inventory_cond_" .. name .. "_icon", self.background)
+		self.txt_max 	= InitTextWnd(xml, "inventory_cond_" .. name .. "_max",  self.background)
+		self.txt	 	= InitTextWnd(xml, "inventory_cond_" .. name, 			 self.background)
+		
+		if (is_delta) then
+			self.txt_delta = InitTextWnd(xml, "inventory_cond_" .. name .. "_delta", self.background)
+			self.txt_delta:SetText("+0.00")
+		end
+		
+		self.color = color
+		self.icon:SetTextureColor(color:GetInt())
+		
+		self:SetValue(100, 100)
+	end;
+	
+	SetRate = function(self, rate)
+		
+		local rate_str
+		local sign
+		local color
+		
+		if (rate < 0) then
+			sign = ""
+			color = Colors.INVENTORY_HP_RED:GetInt()
+		elseif (rate > 0) then
+			sign = "+"
+			color = Colors.INVENTORY_HP_GREEN:GetInt()
+		else
+			sign = "+"
+			color = Colors.INVENTORY_TEXT:GetInt()
+		end
+		
+		if (rate >= 100) or (rate <= -100) then
+			rate_str = string.format("%.0f", rate)
+		elseif (rate >= 10) or (rate <= -10) then
+			rate_str = string.format("%.1f", rate)
+		elseif (rate > 0) or (rate < 0) then
+			rate_str = string.format("%.2f", rate)
+		else
+			rate_str = "0.00"
+		end
+		
+		self.txt_delta:SetText(sign .. rate_str)
+		self.txt_delta:SetTextColor(color)
+		
+		
+	end;
+	
+	SetValue = function(self, value, value_max)
+		self.txt:SetText(value)
+		self.txt_max:SetText("/" .. value_max)
+		
+		if (value / value_max <= 0.2) then
+			self.txt:SetTextColor(Colors.INVENTORY_HP_RED:GetInt())
+		else
+			self.txt:SetTextColor(self.color:GetInt())
+		end
+	end;
+	
+	Update = function(self)
+		local condition = Body.conditions[self.name]
+		self:SetValue(math.ceil(condition:Get()), condition:GetMax())
+		self:SetRate(condition:GetRegenRate())
+	end;
+}
+
+class "CUIConditions"
+{
+	__init = function(self, xml, parent)
+		self.background = InitStatic(xml, "inventory_conditions_bg", parent)
+		self.health    	= CUICondition("health", 	xml, self.background, Color.FromRGBA(154, 211, 35, 255), true)
+		self.energy    	= CUICondition("energy", 	xml, self.background, Color.FromRGBA(230, 228, 163, 255), true)
+		self.hydration 	= CUICondition("hydration", xml, self.background, Color.FromRGBA(128, 215, 255, 255), true)
+		
+		CenterHorizontal(self.health.background, self.background)
+	end;
+}
+
+--==============================================================================
+--============================= Class "CUIBodyInventory" =======================
+--==============================================================================
+--[[
+	This is the HUD that appeads on the left side when player opens inventory.
+	Contains:
+		1) Limbs:
+			-- nameplate,
+			-- HP-plate,
+			-- status effects list
+			-- color-coded texture
+		2) Body conditions: total health, energy, hydration, etc.
+--]]
+
+ClassUI "CUIBodyInventory" (CUIScriptWnd)
+
+function CUIBodyInventory:__init() super()
+	
+	self.last_update = 0
+	self.continious_update = false
+
+	self.background = nil
+	self.body = nil
+		
+	-- Limbs controls
+	self.limbs = {}
+	
+	-- Body conditions controls
+	self.conditions = nil
+	
+	-- Initialize
+	self:InitControls()
+	
+	-- Load all the actual info
+	self:OnLoaded()
+	
+	-- Register callbacks
+	RegisterScriptCallback("ActorMenu_on_item_focus_receive", function(item) self:OnItemFocusReceive(item) end)
+	RegisterScriptCallback("ActorMenu_on_item_focus_lost", function(item) self:OnItemFocusLost(item) end)
+	
+	RegisterScriptCallback("efth_on_health_changed", function(limb) self:OnHealthChanged(limb) end)
+	RegisterScriptCallback("efth_on_buff_added", function(buff) self:OnBuffChanged(buff, true) end)
+	RegisterScriptCallback("efth_on_buff_removed", function(buff) self:OnBuffChanged(buff, false) end)
+	RegisterScriptCallback("efth_on_buff_expiring", function(buff) self:OnBuffExpiring(buff) end)
+end
+
+function CUIBodyInventory:__finalize()
+	UnregisterScriptCallback("efth_on_health_changed")
+	UnregisterScriptCallback("efth_on_buff_added")
+	UnregisterScriptCallback("efth_on_buff_removed")
+	UnregisterScriptCallback("efth_on_buff_expiring")
+	
+	UnregisterScriptCallback("ActorMenu_on_item_focus_receive")
+	UnregisterScriptCallback("ActorMenu_on_item_focus_lost")
+end
+
+function CUIBodyInventory:InitControls()
+
+	-- Load HUD xml
+	local xml = CScriptXmlInit()
+	xml:ParseFile("ui_efth_hud_inventory.xml")
+	
+	-- Initialize background
+	self.background = xml:InitStatic("inventory_bg", self)
+	
+	-- Set background transparency
+	local alpha = (1.0 - GetConfig("inv_bg_alpha")) * 255	
+	self.background:SetTextureColor(GetARGB(alpha, 255, 255, 255))
+	
+
+	local height_screen = device().height
+	local height_background = self.background:GetHeight()
+	local width_background = self.background:GetWidth()
+	
+	-- Attach conditions controls
+	if (GetConfig("inv_show_conditions")) then
+		self.conditions = CUIConditions(xml, self.background)
+		height_background = height_background + self.conditions.background:GetHeight()
+	end
+	
+	-- Center HUD vertically on screen
+	local size = vector2():set(width_background, height_background)
+	local pos = vector2():set(30, math.floor((height_screen - height_background) / 2))	
+	self.background:SetWndSize(size)
+	self.background:SetWndPos(pos)
+	utils_xml.correct_ratio(self.background)
+	
+	-- Initialize body background
+	self.body = InitStatic(xml, "inventory_body", self.background)
+	self.body:SetTextureColor(GetARGB(150, 255, 255, 255))
+	
+	-- Attach limbs controls
+	for name, limb in pairs(Body.limbs) do
+		self.limbs[name] = CUILimb(xml, name, self.background)
+	end
+	
+end
+
+function CUIBodyInventory:OnLoaded()
+
+	-- Update each limb's HP
+	for limb_name, limb in pairs(Body.limbs) do
+		self:OnHealthChanged(limb)
+	end
+	
+	-- Update total HP
+	if (self.conditions) then
+		self.conditions.health:Update()
+	end
+	
+	-- Update buffs
+	for buff_name, buff in pairs(Body.buffs.active.queue) do
+		
+		if (buff.ICON) then
+			
+			local buff_limb = buff.LIMB or "head"
+			local buff_icon = buff.ICON
+			
+			local effect_list = self.limbs[buff_limb].effects_list
+			local effect = effect_list.effects[buff_icon]
+			
+			effect:IncCounter()
+				
+			-- If buff is expiring - mark it for continious updates
+			effect.expiring = (buff.IS_DURATIONAL) and (buff:IsExpiring())
+			self.continious_update = (buff.IS_DURATIONAL) and (buff:IsExpiring())
+			
+			effect_list:Refresh()
+		
+		end
+		
+	end
+	
+end
+
+function CUIBodyInventory:OnHealthChanged(limb)
+	self.limbs[limb.name]:SetHP(limb.hp, limb.hp_max_current)
+	if (self.conditions) then
+		self.conditions.health:Update()
+	end
+end
+
+function CUIBodyInventory:OnBuffChanged(buff, added)
+
+	if (buff.ICON) then
+	
+		local buff_limb = buff.LIMB or "head"
+		local buff_icon = buff.ICON
+		
+		local effect_list = self.limbs[buff_limb].effects_list
+		local effect = effect_list.effects[buff_icon]
+		
+		effect:SetTransparency(1)
+		
+		-- Change counter
+		if (added) then
+			effect:IncCounter()
+		else
+			effect:DecCounter()
+		end
+			
+		effect.expiring = (buff.IS_DURATIONAL) and (buff:IsExpiring())
+		self.continious_update = (buff.IS_DURATIONAL) and (buff:IsExpiring())
+		
+		-- Update list
+		effect_list:Refresh()
+		
+	end
+	
+	if (self.conditions) then
+		self.conditions.health:Update()
+	end
+	
+end
+
+function CUIBodyInventory:OnBuffExpiring(buff)
+	if (buff.ICON) then
+		
+		local buff_limb = buff.LIMB or "head"
+		local buff_icon = buff.ICON 
+	
+		self.limbs[buff_limb].effects_list.effects[buff_icon].expiring = true
+		self.continious_update = true
+	end
+end
+
+function CUIBodyInventory:OnItemFocusReceive(object)
+
+	-- Get object
+	local item = (object) and CItem(object)
+	
+	if (item) and (item.is_limb_specific) then
+		
+		-- Check each limb
+		for name, limb in pairs(Body.limbs) do
+			
+			-- If med can treat this limb - glow limb plate
+			if (item:GetLimbPriority(limb, item:GetCharges()) > 0) then
+				self.limbs[name].nameplate:ToggleGlow(true)
+			end	
+		end
+		
+	end
+		
+end
+
+function CUIBodyInventory:OnItemFocusLost(item)
+	
+	for name, limb in pairs(self.limbs) do
+		limb.nameplate:ToggleGlow(false)
+	end
+	
+end
+
+function CUIBodyInventory:Update()
+
+	local time_now = time_global()
+
+	if (time_now - self.last_update > HUD_UPDATE_INTERVAL) then
+	
+		for name, limb in pairs(self.limbs) do
+			limb.hp:Update(time_now)
+		end
+		
+		if (self.conditions) then
+			self.conditions.hydration:Update()
+			self.conditions.energy:Update()
+		end
+	
+		self.last_update = time_now
+		
+		CUIScriptWnd.Update(self)
+		
+		-- No continious updates needed
+		if (not self.continious_update) then
+			return
+		end
+			
+		-- Alpha percent
+		local percent = (math.sin(3 * time_global() / 1000) + 1) * 0.5
+		
+		-- Reset flag
+		self.continious_update = false
+			
+		-- Iterate limbs and their effects
+		for lname, limb in pairs(self.limbs) do
+			for sname, effect in pairs(limb.effects_list.effects) do
+				if (effect:IsShown() and effect.expiring) then
+					effect:SetTransparency(percent)
+					self.continious_update = true
+				end
+			end
+		end
+		
+	end
+	
+end
+
+
+-- =======================================================================
+-- =================== Limb item use / highlighting ======================
+-- =======================================================================
+--[[
+	WARNING: Monkey-patches ahead!
+	
+	In order to be able highlight and use items from inventory on a specific
+	limb we override some of the inventory methods, namely:
+	
+		1) `UIInventory.On_CC_DragDrop(...)` 
+			- to be able to drag-and-drop item to use on a limb;
+		2) `UICellContainer.On_Drag(...)`		
+			- to be able to highlight nameplate when dragging applicable item over a limb;
+	
+	Since some of the mods DGAF about properly patching these funcitons,
+	this monkey-patching has to occur at the very end, to override all those shitty mods.
+	(hence the name of the script `zzzz_...`)
+	
+	This HUD only works with non-inventory part of the screen, so that
+	mods which are loaded AFTER this one should be fine, since we invoke
+	original callbacks for them.
+--]]
+
+local OriginalInventoryOnDragDrop = ui_inventory.UIInventory.On_CC_DragDrop
+function ui_inventory.UIInventory:On_CC_DragDrop(bag_from, idx_from)
+
+	local object = self.CC[bag_from]:GetObj(idx_from)
+	local item = (object) and (CItem(object))
+	
+	local is_cursor = (HUD) and (HUD.body:IsCursorOverWindow())
+	local is_limb_specific = (item) and (item.is_limb_specific)
+	
+	if (is_cursor) and (is_limb_specific) then
+	
+		-- Find over which limb we are
+		for name, limb in pairs(HUD.limbs) do
+			-- Is cursor over limb?
+			if (limb.nameplate.glow:IsCursorOverWindow()) and 
+			   (item:GetLimbPriority(Body.limbs[name], item:GetCharges()) > 0) 
+			then
+				Body.limbs[name].to_heal_next = true
+				self:Action_Use(object, bag_from)
+				return
+			end
+		end
+	
+	else
+		OriginalInventoryOnDragDrop(self, bag_from, idx_from)
+	end
+	
+end
+
+local OriginalInventoryOnDrag = utils_ui.UICellContainer.On_Drag
+function utils_ui.UICellContainer:On_Drag(idx, tg, set)
+	OriginalInventoryOnDrag(self, idx, tg, set)
+	
+	if (HUD) and (self.hold.idx) and (tg - self.hold.tg > 100) then
+	
+		local object = self:GetObj(self.hold.idx)
+		local item = (object) and (CItem(object))
+		
+		if (item) and (item.is_limb_specific) then
+			for name, limb in pairs(HUD.limbs) do
+				if (limb.nameplate.glow:IsCursorOverWindow()) then
+					limb.nameplate:ToggleGlow(item:GetLimbPriority(Body.limbs[name], item:GetCharges()) > 0)
+				else
+					limb.nameplate:ToggleGlow(false)
+				end
+			end
+		end
+		
+	end
+	
+end
+
+-- =======================================================================
+-- =======================================================================
+
+function ActorOnNetDestroy()
+	HideHUD()
+end
+
+function ShowHUD()
+	if (HUD == nil) then
+		HUD = CUIBodyInventory()
+		get_hud():AddDialogToRender(HUD)
+	end
+	
+end
+
+function HideHUD()
+	if (HUD) then
+		get_hud():RemoveDialogToRender(HUD)
+		HUD = nil
+	end
+end
+
+function OnMenuModeChanged(new_mode, last_mode)
+
+	-- From `actor_menu.script`
+	-- 0 = Undefined (closed)
+	-- 1 = Inventory
+	-- 2 = Trade
+	-- 3 = Upgrade
+	-- 4 = DeadBodySearch
+	-- 10 = Talk dialog show
+	-- 11 = Talk dialog hide
+	
+	if (new_mode == 1) then	
+		-- Inventory open - show UI
+		ShowHUD()
+	else
+		-- Any other mode - close UI
+		HideHUD()
+	end
+	
+end
+
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_net_destroy", ActorOnNetDestroy)	
+	RegisterScriptCallback("ActorMenu_on_mode_changed", OnMenuModeChanged)
+end

@@ -1,0 +1,478 @@
+local class = zzz_efth_lua.class
+local enum = zzz_efth_lua.enum
+
+--[[
+	REFERENCE: https://escapefromtarkov.fandom.com/wiki/Medical
+--]]
+
+-- Cache table of items' sections
+ITEMS_CACHE = {}
+
+function CacheItemSection(section)
+
+	local item = {
+	
+		-- Limb-specific effects
+		
+		can_heal 					= SYS_GetParam(2, section, "efth_heal", 0),
+		cost_restore_limb 			= SYS_GetParam(2, section, "efth_restore_limb", 0),
+		cost_remove_bleed_light 	= SYS_GetParam(2, section, "efth_remove_bleed_light", 0),
+		cost_remove_bleed_heavy 	= SYS_GetParam(2, section, "efth_remove_bleed_heavy", 0),
+		cost_remove_fracture		= SYS_GetParam(2, section, "efth_remove_fracture", 0),
+			
+		-- Body-wide effects
+		
+		remove_pain			 		= SYS_GetParam(2, section, "efth_remove_pain", 0) * 1000,
+		remove_concussion			= SYS_GetParam(2, section, "efth_remove_concussion", 0) * 1000,
+		remove_bleed 				= SYS_GetParam(2, section, "efth_remove_bleed", 0) * 1000,
+		
+		apply_tremor_duration		= SYS_GetParam(2, section, "efth_apply_tremor_duration", 0) * 1000,
+		apply_tremor_delay 			= SYS_GetParam(2, section, "efth_apply_tremor_delay", 0) * 1000,
+		
+		apply_concussion_duration 	= SYS_GetParam(2, section, "efth_apply_concussion_duration", 0) * 1000,
+		apply_concussion_delay 		= SYS_GetParam(2, section, "efth_apply_concussion_delay", 0) * 1000,
+	}
+	
+	-- Apply skills buffs
+	for skill, amount in pairs(Body.skills) do
+		
+		local prefix_delay 	  		= "skill_" .. skill .. "_delay"
+		local prefix_duration 		= "skill_" .. skill .. "_duration"
+		local prefix_amount   		= "skill_" .. skill .. "_amount"
+		
+		item[prefix_delay] 			= SYS_GetParam(2, section, "efth_" .. prefix_delay, 0) * 1000
+		item[prefix_duration] 		= SYS_GetParam(2, section, "efth_" .. prefix_duration, 0) * 1000
+		item[prefix_amount] 		= SYS_GetParam(2, section, "efth_" .. prefix_amount, 0)
+		
+	end
+	
+	-- Apply conditions buffs
+	for condition_name, condition in pairs(Body.conditions) do
+	
+		local prefix_delay 	  		   = condition_name .. "_per_second_delay"
+		local prefix_duration 		   = condition_name .. "_per_second_duration"
+		local prefix_amount	  		   = condition_name .. "_per_second_amount"
+		
+		item[prefix_delay] 	  		   = SYS_GetParam(2, section, "efth_" .. prefix_delay, 0) * 1000
+		item[prefix_duration] 		   = SYS_GetParam(2, section, "efth_" .. prefix_duration, 0) * 1000
+		item[prefix_amount]	  		   = SYS_GetParam(2, section, "efth_" .. prefix_amount, 0)
+		
+		item[condition_name]  		   = SYS_GetParam(2, section, "efth_" .. condition_name, 0)
+		item[condition_name .. "_max"] = SYS_GetParam(2, section, "efth_" .. condition_name .. "_max", 0)
+		
+	end
+
+	ITEMS_CACHE[section] = item
+	
+end
+
+--=========================================================================
+--=========================== Class `CItem` ===============================
+--=========================================================================
+
+--[[
+	Represents an EFTH item: `limb_specific` or `booster`.
+
+	-- LIMB SPECIFIC --
+	
+	Limb-specific item - applied only to one limb at a time.
+	Usually has charges and spend those charges on various limb-specific actions.
+	
+	Examples:
+		1) Medkits
+		2) Bandages
+		3) Splints
+		4) Surgery kits
+	Can:
+		1) Heal limb's HP
+		2) Remove debuffs such as bleeds and fractures
+		3) Restore limb from being destoyed
+
+	-- BOOSTER --
+	
+	Non-limb-specific item with various effects. 
+	Examples:
+		1) Painkillers
+		2) Stimulators
+	
+	Can:
+		1) Apply/remove body-wise buffs/debuffs.
+		2) Add/remove body conditions (regen / flat amount).
+		
+	NOTE: Stimulators (injectors) usually have a 1 second
+		  delay before positive effect kicks in, and have
+		  negative effects kick in some time near/after
+		  the expiration.
+		  
+	NOTE: Positive values - buff, negative values - debuff.
+--]]
+
+class "CItem"
+{
+	__init = function(self, item)
+		self.item = item
+		self.section = (item) and (item:section())
+		self.cache = (self.section) and (ITEMS_CACHE[self.section])
+		
+		self.is_limb_specific = SYS_GetParam(1, self.section, "efth_limb_specific", false)
+		self.is_booster = SYS_GetParam(1, self.section, "efth_booster", false)
+	end;
+		
+	GetCharges = function(self)
+		return self.item:get_remaining_uses()
+	end;
+	
+	SetCharges = function(self, value)
+		self.item:set_remaining_uses(value)
+	end;
+	
+	UseBooster = function(self)
+			
+		if (self.cache.remove_pain > 0) then 
+			Body:AddBuff(CBuffPainkiller, self.section, self.cache.remove_pain) 
+		end
+		if (self.cache.remove_concussion > 0) then 
+			Body:AddBuff(CBuffConcussionHeal, self.section, self.cache.remove_concussion) 
+		end
+		if (self.cache.remove_bleed > 0) then 
+			Body:AddBuff(CBuffHemostatic, self.section, self.cache.remove_bleed) 
+		end
+		if (self.cache.apply_tremor_duration > 0) then 
+			Body:AddBuffDelayed(self.cache.apply_tremor_delay, CBuffTremorTemporary, self.section, self.cache.apply_tremor_duration) 
+		end
+		if (self.cache.apply_concussion_duration > 0) then 
+			Body:AddBuffDelayed(self.cache.apply_concussion_delay, CBuffConcussion, self.section, self.cache.apply_concussion_duration) 
+		end
+		
+		-- Apply skills buffs
+		for skill, amount in pairs(Body.skills) do
+		
+			local skill_delay    = self.cache["skill_" .. skill .. "_delay"]
+			local skill_duration = self.cache["skill_" .. skill .. "_duration"]
+			local skill_amount   = self.cache["skill_" .. skill .. "_amount"]
+			
+			if (skill_amount ~= 0) then
+				Body:AddBuffDelayed(skill_delay, CBuffSkill, self.section .. "_" .. skill, skill, skill_amount, skill_duration)
+			end
+			
+		end
+	
+		
+		-- Apply conditions buffs
+		for condition_name, condition in pairs(Body.conditions) do
+		
+			local buff_id = self.section .. "_" .. condition_name
+		
+			-- Flat amount buffs
+			local flat_amount 	  	   	   = self.cache[condition_name] 
+			local flat_amount_max		   = self.cache[condition_name .. "_max"]
+			local flat_amount_max_duration = self.cache[condition_name .. "_max_duration"]
+			
+			if (flat_amount_max ~= 0) then
+				Body:AddBuffDelayed(1000, CBuffConditionMax, buff_id, condition_name, flat_amount_max, flat_amount_max_duration)
+			end
+			
+			if (flat_amount ~= 0) then
+				condition:Add(flat_amount)
+			end
+			
+			-- Regen (per second) buffs
+			local regen_delay 	 = self.cache[condition_name .. "_per_second_delay"]
+			local regen_duration = self.cache[condition_name .. "_per_second_duration"]
+			local regen_amount 	 = self.cache[condition_name .. "_per_second_amount"]
+			
+			if (regen_amount ~= 0) then
+				Body:AddBuffDelayed(regen_delay, CBuffConditionRegen, buff_id, condition_name, regen_amount, regen_duration)
+			end
+			
+		end
+		
+	end;
+	
+	GetLimbPriority = function(self, limb, charges)
+		
+		-- Limb's priority
+		local priority = 0
+		
+		-- Limb's properties
+		local is_vital = limb.is_vital
+		local is_lowhp = limb:GetPercentHP() < 0.3
+	
+		-- Can heal limb
+		if (limb:CanBeHealed()) and 
+		   (self.cache.can_heal > 0) and (charges > 0)
+		then
+			-- Base prio for healing
+			priority = priority + 2
+			
+			-- Low HP vital parts - in priority
+			if (is_lowhp) and (is_vital) then
+				priority = priority + 1
+			end
+		end
+		
+		-- Can stop heavy bleeding
+		if (limb:HasBuff(CBuffBleedHeavy)) and 
+		   (self.cache.cost_remove_bleed_heavy > 0) and
+		   (self.cache.cost_remove_bleed_heavy <= charges)
+		then	
+			-- Base prio for bleedings
+			priority = priority + 1
+			
+			-- Low HP vital parts - in priority
+			if (is_lowhp) and (is_vital) then
+				priority = priority + 1
+			end
+		end
+		
+		-- Can stop light bleeding
+		if (limb:HasBuff(CBuffBleedLight)) and 
+		   (self.cache.cost_remove_bleed_light > 0) and
+		   (self.cache.cost_remove_bleed_light <= charges)
+		then
+			-- Base prio for bleedings
+			priority = priority + 1
+			
+			-- Low HP vital parts - in priority
+			if (is_lowhp) and (is_vital) then
+				priority = priority + 1
+			end
+		end
+		
+		-- Can heal fracture
+		-- (!) Cannot fracture VITAL limbs (!)
+		if (limb:HasBuff(CBuffFracture)) and 
+		   (self.cache.cost_remove_fracture > 0) and 
+		   (self.cache.cost_remove_fracture <= charges)
+		then				
+			priority = priority + 3
+		end
+		
+		-- Can restore destroyed limb
+		-- (!) Cannot restore destroyed VITAL limbs (!)
+		if (limb:IsDestroyed()) and 
+		   (self.cache.cost_restore_limb > 0) and 
+		   (self.cache.cost_restore_limb <= charges) 
+		then
+			priority = priority + 4
+		end
+	
+		return priority
+		
+	end;
+	
+	
+	FindLimb = function(self, charges_left)
+	
+		local charges = charges_left
+	
+		local limb_to_apply = nil
+		local limb_to_apply_prio = 0
+		
+		-- Now we want to determine which limb to heal first.
+		-- We iterate limbs and assign them a priority,
+		-- then choose highest priority limb, with decider being HP%
+		for name, limb in pairs(Body.limbs) do
+		
+			-- Found target limb (drag-and-drop from inventory)
+			if (limb.to_heal_next) then
+				limb_to_apply = limb
+				break
+			end
+			
+			local priority = self:GetLimbPriority(limb, charges_left)
+			
+			printf("Limb " .. name .. " prio " .. priority)
+			
+			-- If item can do something
+			if (priority > 0) then
+			
+				-- Higher priority wins
+				-- Equal priority - lower HP% wins
+				if ((limb_to_apply == nil) or 
+					(limb_to_apply_prio < priority) or														  
+					(limb_to_apply_prio == priority and (limb:GetPercentHP() < limb_to_apply:GetPercentHP())))
+				then
+					limb_to_apply = limb
+					limb_to_apply_prio = priority			
+				end
+				
+			end
+			
+		end
+		
+		return limb_to_apply
+	
+	end;
+	
+	UseOnLimb = function(self, limb)
+	
+		limb.to_heal_next = false
+	
+		local charges = self:GetCharges() + 1
+	
+		if (limb:IsDestroyed()) and 
+		   (self.cache.cost_restore_limb > 0) and 
+		   (self.cache.cost_restore_limb <= charges) 
+		then
+			-- Restored limb has 1 HP
+			limb:SetMaxHP(math.ceil(limb.hp_max_current * 0.4))
+			limb:SetHP(1)
+			
+			charges = charges - self.cache.cost_restore_limb
+			self:SetCharges(charges)
+						
+			printf("Item " .. self.section .. " RESTORED LIMB. Charges left: " .. charges)
+		end
+		
+		if (limb:HasBuff(CBuffFracture)) and 
+		   (self.cache.cost_remove_fracture > 0) and 
+		   (self.cache.cost_remove_fracture <= charges)
+		then
+			-- Delete fracture and remove pain
+			limb:RemoveBuff(CBuffFracture)
+			
+			charges = charges - self.cache.cost_remove_fracture
+			self:SetCharges(charges)
+			
+			printf("Item " .. self.section .. " treated FRACTURE. Charges left: " .. charges)
+		end
+
+		if (limb:HasBuff(CBuffBleedHeavy) or limb:HasBuff(CBuffBleedHeavyTemporary)) and 
+		   (self.cache.cost_remove_bleed_heavy > 0) and
+		   (self.cache.cost_remove_bleed_heavy <= charges)
+		then
+			-- Remove bleeding and apply fresh wound to a limb
+			limb:RemoveBuff(CBuffBleedHeavy)
+			
+			charges = charges - self.cache.cost_remove_bleed_heavy
+			self:SetCharges(charges)
+			
+			printf("Item " .. self.section .. " treated HEAVY BLEED. Charges left: " .. charges)
+		end
+		
+		if (limb:HasBuff(CBuffBleedLight) or limb:HasBuff(CBuffBleedLightTemporary)) and 
+		   (self.cache.cost_remove_bleed_light > 0) and
+		   (self.cache.cost_remove_bleed_light <= charges)
+		then
+			-- Remove light bleeding from a limb
+			limb:RemoveBuff(CBuffBleedLight)
+			
+			charges = charges - self.cache.cost_remove_bleed_light
+			self:SetCharges(charges)
+			
+			printf("Item " .. self.section .. " treated LIGHT BLEED. Charges left: " .. charges)
+		end
+		
+		if (limb:CanBeHealed()) and 
+		   (self.cache.can_heal > 0) and (charges > 0)
+		then
+			-- Restore limb HP up to item cost-per-use
+			local amount = math.min(self.cache.can_heal, charges, limb.hp_max_current - limb.hp)
+			limb:ApplyHeal(amount)
+			
+			charges = charges - amount
+			self:SetCharges(charges)
+			
+			printf("Item " .. self.section .. " HEALED " .. amount .. " HP. Charges left: " .. charges)
+		end
+	
+	end;
+	
+	UseDefault = function(self)
+	
+		local eat_health = SYS_GetParam(2, self.section, "eat_health", 0)
+		
+		if (eat_health ~= 0) then
+			local amount = eat_health * Body.conditions.health.hp_max
+			Body.conditions.health:Add(amount)
+		end
+		
+		-- Time of boost in IRL seconds
+		local boost_time = SYS_GetParam(2, self.section, "boost_time", 0)
+		
+		-- Speed of boost in IRL seconds
+		local boost_health = SYS_GetParam(2, self.section, "boost_health_restore", 0) * 6
+		
+		if (boost_health ~= 0) and (boost_time > 0) then
+		
+			local amount_per_sec = boost_health * Body.conditions.health.hp_max		
+			local buff_id = self.section .. "_health"
+			
+			Body:AddBuffDelayed(1000, CBuffConditionRegen, buff_id, "health", amount_per_sec, boost_time * 1000)
+		end
+		
+	end;
+	
+	OnItemUse = function(self)
+		
+		-- Check if limb-specific		
+		local limb = (self.is_limb_specific) and 
+					 (self:FindLimb(self:GetCharges() + 1))
+		
+		-- Use limb-specific part
+		if (limb) then
+			self:UseOnLimb(limb)
+		end
+		
+		-- Use booster part
+		if (self.is_booster) then
+			self:UseBooster()
+		end
+		
+		self:UseDefault()
+		
+	end;
+	
+	OnItemBeforeUse = function(self, flags)
+	
+		-- WARNING: Item is NOT allowed to be used if it is
+		-- 			limb-specific and there is no suitable limb 
+		--			to apply it to.
+		--
+		--			In other cases, item could be used.
+		
+		if (self.cache) and								-- Check if EFTH item
+		   (self.is_limb_specific) and					-- Check if limb-specific item
+		   (self:FindLimb(self:GetCharges()) == nil)	-- Check if limb-to-apply is there
+		then
+			flags.ret_value = false
+		end
+	end;
+	
+}
+
+function ActorOnItemBeforeUse(object, flags)	
+	CItem(object):OnItemBeforeUse(flags)
+end
+
+function ActorOnItemUse(object, section)
+	CItem(object):OnItemUse()
+end
+
+-- This is a hack around broken "actor_on_item_before_use" Callbacks
+-- which many other mods abuse. 
+local OriginalOnItemBeforeUse = itms_manager.actor_on_item_before_use
+function itms_manager.actor_on_item_before_use(item, flags)
+	ActorOnItemBeforeUse(item, flags)
+	OriginalOnItemBeforeUse(item, flags)
+end
+
+-- Fix wrong tooltips
+local OriginalPrepareStatsTable = utils_ui.prepare_stats_table
+function utils_ui.prepare_stats_table()
+	OriginalPrepareStatsTable()
+	utils_ui.stats_table.booster.boost_health_restore.magnitude = 100 * 6
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_item_use", ActorOnItemUse)
+	
+	-- Cache all EFTH items
+	ini_sys:section_for_each(function(section)
+		if (SYS_GetParam(1, section, "efth_item", false)) then
+			CacheItemSection(section)
+		end
+	end)
+	
+end

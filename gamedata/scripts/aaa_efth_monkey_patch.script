@@ -1,0 +1,17 @@
+local originalAOIBU = itms_manager.actor_on_item_before_use
+
+function itms_manager.actor_on_item_before_use(item, flags)
+	
+	-- Allow weaker boosters override strong
+	itms_manager.old_booster = {}
+
+	local before = flags.ret_value
+	originalAOIBU(item, flags)
+	local after = flags.ret_value
+	
+	-- Disallow changing flag FALSE -> TRUE as a result of callback
+	if (before == false) and (after == true) then
+		flags.ret_value = false
+	end
+	
+end

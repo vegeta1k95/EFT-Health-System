@@ -1,0 +1,62 @@
+-- If you don't use MCM, change your defaults from here.
+local DEFAULTS = {
+
+	["general_damage_multiplier"]	= 3.5,
+	["general_campfire_heal"]		= true,
+
+	["inv_bg_alpha"] 		   		= 0.3,
+	["inv_show_conditions"]	   		= true,
+
+	["overlay_visibility"] 	   		= 0,
+	["overlay_coloring"] 	   		= 0,
+	["overlay_autohide_delay"] 		= 3,
+	["overlay_offset_x"]	   		= 0.0,
+	["overlay_offset_y"]	   		= 0.0,
+	
+	["items_names"]			   		= true,
+	["items_dont_stack"]	   		= true,
+}
+
+function GetConfig(key)
+	if (ui_mcm) then 
+		return ui_mcm.get("efth/"..key) 
+	else 
+		return DEFAULTS[key] 
+	end
+end
+
+function on_mcm_load()
+	options = { 
+		id = "efth", 
+		sh = true,
+		gr = {
+	
+			{id = "title", 						type = "slide", link = "ui_options_slider_player", text = "ui_mcm_efth_title", size = {512,50}, spacing = 20 },
+			
+			-- GENERAL
+			{id = "general_damage_multiplier", 	type = "track", val = 2, min = 0.1, max = 10,  step = 0.1, def = 3.5},
+			{id = "general_campfire_heal",    	type = "check", val = 1, def = true},
+			{id = "divider", 					type = "line" },
+			
+			-- INVENTORY
+			{id = "inv_bg_alpha", 				type = "track", val = 2, min = 0.0, max = 1,  step = 0.01, def = 0.3},
+			{id = "inv_show_conditions",    	type = "check", val = 1, def = true},
+			{id = "divider", 					type = "line" },
+			
+			-- OVERLAY
+			{id = "overlay_visibility", 		type = "list", 	val = 2, def = 0.0, content= { {0, "efth_visible"} ,   {1, "efth_automatic"} , {2, "efth_hidden"} } },
+			{id = "overlay_coloring", 			type = "list", 	val = 2, def = 0.0, content= { {0, "efth_monotonic"} , {1, "efth_colorful"} } },
+			{id = "overlay_autohide_delay", 	type = "track", val = 2, min = 1.0, max = 20, step = 1, def = 3},
+			{id = "overlay_offset_x", 			type = "track", val = 2, min = 0.0, max = 1,  step = 0.01, def = 0},
+			{id = "overlay_offset_y", 			type = "track", val = 2, min = 0.0, max = 1,  step = 0.01, def = 0},
+			{id = "divider", 					type = "line" },
+			
+			-- ITEMS
+			{id = "items_names", 	  			type = "check", val = 1, def = true},
+			{id = "items_dont_stack", 			type = "check", val = 1, def = true},
+			{id = "divider", 					type = "line" },
+			
+		}
+	}
+	return options
+end

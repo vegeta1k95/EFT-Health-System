@@ -1,0 +1,31 @@
+--[[
+	Monkey-patches for Medic dialog callbacks.
+--]]
+
+OriginalIsActorInjured = dialogs.is_actor_injured
+dialogs.is_actor_injured = function(first_speaker, second_speaker)
+	return Body:IsHealable()
+end
+
+OriginalIsActorNotHealthy = dialogs.is_actor_not_healthy
+dialogs.is_actor_not_healthy = function(first_speaker, second_speaker)
+	return Body:IsHealable()
+end
+
+OriginalIsActorInjuredIrradiated = dialogs.is_actor_injured_irradiated
+dialogs.is_actor_injured_irradiated = function(first_speaker, second_speaker)
+	return dialogs.is_actor_injured(first_speaker, second_speaker) and
+		   dialogs.is_actor_irradiated(first_speaker, second_speaker)
+end
+
+OriginalHealActorInjury = dialogs.heal_actor_injury
+dialogs.heal_actor_injury = function(first_speaker, second_speaker)
+	OriginalHealActorInjury(first_speaker, second_speaker)
+	Body:HealFully()
+end
+
+OriginalHealActorInjuryRadiation = dialogs.heal_actor_injury_radiation
+dialogs.heal_actor_injury_radiation = function(first_speaker, second_speaker)
+	dialogs.heal_actor_radiation(first_speaker, second_speaker)
+	dialogs.heal_actor_injury(first_speaker, second_speaker)
+end

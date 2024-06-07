@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+	<string id="efth_limb"><text>КОНЕЧНОСТЬ:</text></string>
+	<string id="efth_effects"><text>ЭФФЕКТЫ:</text></string>
+	
+	<string id="efth_bullet"><text>•</text></string>
+	<string id="efth_upto"><text>до</text></string>
+	<string id="efth_for"><text>на</text></string>
+	<string id="efth_over"><text>за</text></string>
+	<string id="efth_and"><text>и</text></string>
+	
+	<string id="efth_max"><text>Макс.</text></string>
+	<string id="efth_sec"><text>сек.</text></string>
+	<string id="efth_min"><text>мин.</text></string>
+	
+	<string id="efth_heals"><text>Восстановление HP</text></string>
+	<string id="efth_restores"><text>Восстанавливает уничтоженую конечность</text></string>
+	<string id="efth_removes"><text>Снимает</text></string>
+	<string id="efth_adds"><text>Добавляет</text></string>
+	
+	<string id="efth_skill"><text>Навык</text></string>
+	<string id="efth_skill_endurance"><text>Cтойкость</text></string>
+	<string id="efth_skill_health"><text>Здоровье</text></string>
+	<string id="efth_skill_immunity"><text>Иммунитет</text></string>
+	<string id="efth_skill_metabolism"><text>Метаболизм</text></string>
+	<string id="efth_skill_strength"><text>Сила</text></string>
+	<string id="efth_skill_stress_resistance"><text>Стрессоустойчивость</text></string>
+	<string id="efth_skill_vitality"><text>Жизнеспособность</text></string>
+				
+	<string id="efth_condition_health"><text>Здоровье</text></string>
+	<string id="efth_condition_stamina"><text>Выносливость</text></string>
+	<string id="efth_condition_energy"><text>Энергия</text></string>
+	<string id="efth_condition_hydration"><text>Гидрация</text></string>
+	<string id="efth_condition_radiation"><text>Радиация</text></string>
+	<string id="efth_condition_weight"><text>Переносимый вес</text></string>
+	
+	<string id="efth_condition_regen_health"><text>Восстановление здоровья</text></string>
+	<string id="efth_condition_regen_stamina"><text>Восстановление выносливости</text></string>
+	<string id="efth_condition_regen_energy"><text>Восстановление энергии</text></string>
+	<string id="efth_condition_regen_hydration"><text>Восстановление гидрации</text></string>
+	<string id="efth_condition_regen_radiation"><text>Восстановление радиации</text></string>
+	
+	<string id="efth_delay"><text>задержка</text></string>
+	
+	<string id="efth_one_limb"><text>одной конечность</text></string>
+	<string id="efth_per_use"><text>за использование</text></string>
+	<string id="efth_charges"><text>зарядов</text></string>
+	
+	<string id="efth_light_bleeding"><text>лёгкое кровотечение</text></string>
+	<string id="efth_heavy_bleeding"><text>тяжелое кровотечение</text></string>
+	<string id="efth_fracture"><text>перелом</text></string>
+	<string id="efth_pain"><text>боль</text></string>
+	<string id="efth_tremor"><text>тремор</text></string>
+	
+	<string id="efth_painkiller"><text>болеутоляющее</text></string>
+	<string id="efth_concussion"><text>контузию</text></string>
+	<string id="efth_bleed"><text>кровотечения</text></string>
+
+</string_table>

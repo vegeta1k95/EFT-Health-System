@@ -1,0 +1,127 @@
+local GetConfig = zzz_efth_mcm.GetConfig
+
+--[[
+	Monkey patch to (optionally) make medical items non-stackable.
+--]]
+OriginalFindSimilar = utils_ui.UICellContainer.FindSimilar
+function utils_ui.UICellContainer:FindSimilar(obj, sec)
+	
+	if (GetConfig("items_dont_stack")) and
+	   (sec) and (SYS_GetParam(0, sec, "kind") == "i_medical")
+	then
+		return false
+	end
+	
+	return OriginalFindSimilar(self, obj, sec)
+end
+
+--[[
+	Monkey patch to (optionally) add short text name to icons
+	of medical items.
+--]]
+OriginalAddCounter = utils_ui.UICellItem.Add_Counter
+function utils_ui.UICellItem:Add_Counter(xml, obj, sec)
+	OriginalAddCounter(self, xml, obj, sec)
+	
+	self:AddMedicineName(xml, obj, sec)
+	self:AddMedicineUses(xml, obj, sec)
+end
+
+OriginalReset = utils_ui.UICellItem.Reset
+function utils_ui.UICellItem:Reset()
+	OriginalReset(self)
+	if (self.manual) then
+	
+		if (self.med_name) then
+			self.med_name:Show(false)
+		end
+		
+		if (self.med_uses) then
+			self.med_uses:Show(false)
+		end
+		
+	end
+end
+
+function utils_ui.UICellItem.AddMedicineUses(self, xml, obj, sec)
+	
+	if (self.med_uses) then
+		self.med_uses:Show(false)
+	end
+	
+	-- Interested only in medical objects
+	if (SYS_GetParam(0, sec, "kind") ~= "i_medical") then 
+		return 
+	end
+	
+	if (self.bar) then
+		self.bar:Show(false)
+	end
+	
+	local max_uses = SYS_GetParam(0, sec, "max_uses")
+	
+	-- Items with 1 use, don't have labels.
+	-- Also, items in quickslot don't have labels (obj = nil)
+	if (not max_uses) or (max_uses == 1) or (not obj) then
+		return
+	end
+	
+	local left_uses = obj:get_remaining_uses()
+	
+	self.med_uses = self.med_uses or meds_xml:InitTextWnd("medicine_uses", self.cell)
+	self.med_uses:SetEllipsis(false)
+	self.med_uses:SetText(left_uses .. "/" .. max_uses)
+	self.med_uses:AdjustHeightToText()
+	self.med_uses:AdjustWidthToText()
+	
+	if (left_uses / max_uses < 0.5) then
+		self.med_uses:SetTextColor(Colors.INVENTORY_HP_RED:GetInt())
+	end
+	
+	local cell_h = self.cell:GetHeight()
+	local cell_w = self.cell:GetWidth()
+	
+	local h_bar = self.med_uses:GetHeight()
+	local w_bar = self.med_uses:GetWidth()
+	
+	self.med_uses:SetWndPos(vector2():set( cell_w - w_bar - 1 , self.H - h_bar + 1))
+	self.med_uses:Show(true)
+
+end
+
+function utils_ui.UICellItem.AddMedicineName(self, xml, obj, sec)
+
+	if (self.med_name) then
+		self.med_name:Show(false)
+	end
+
+	-- Interested only in medical objects
+	if (SYS_GetParam(0, sec, "kind") ~= "i_medical") then 
+		return 
+	end
+
+	local name_short = "st_" .. sec .. "_short"
+
+	self.med_name = self.med_name or meds_xml:InitTextWnd("medicine_name", self.cell)
+	self.med_name:SetEllipsis(true)
+	self.med_name:SetText(game.translate_string(name_short))
+	self.med_name:AdjustHeightToText()
+	self.med_name:AdjustWidthToText()
+
+	local x_offset = self.bar and self.bar:IsShown() and self.bar:GetWndPos().x + self.bar:GetWidth() or 0
+	
+	local cell_h = self.cell:GetHeight()
+	local cell_w = self.cell:GetWidth()
+	
+	self.med_name:SetWndRect(Frect():set(0, 0, cell_w, self.med_name:GetHeight() + 2))
+	self.med_name:SetWndPos(vector2():set(0, 0))
+	
+	self.med_name:Show(GetConfig("items_names"))
+end
+
+meds_xml = nil
+
+function on_game_start()
+	meds_xml = CScriptXmlInit()
+	meds_xml:ParseFile("ui_efth_meds.xml")
+end

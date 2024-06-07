@@ -1,0 +1,174 @@
+local class = zzz_efth_lua.class
+local ChooseRandom = zzz_efth_lua.ChooseRandom
+local CValueAnimator = zzz_efth_utils.CValueAnimator
+
+class "CDecal" 
+{
+	__init = function(self, name, full_screen, color)
+		
+		self.static = nil
+
+		self.name = name
+		self.full_screen = full_screen
+		self.color = color
+		
+		self.is_enabled = true
+		
+	end;
+	
+	Init = function(self)
+		
+		local hud = get_hud()
+		local wrapper = hud:GetCustomStatic(self.name)
+		
+		if (wrapper) then
+			self.static = wrapper:wnd()
+		else
+			self.static = hud:AddCustomStatic(self.name, true):wnd()
+		end
+
+		self.static:SetTextureColor(self.color)
+		self.static:Show(true)
+		self.static:SetAutoDelete(true)
+		
+		if (self.full_screen) then
+			self.static:SetWndSize(vector2():set(device().width, device().height))
+		end
+		
+		utils_xml.correct_ratio(self.static)
+		
+	end;
+	
+	Destroy = function(self)
+		get_hud():RemoveCustomStatic(self.name)
+		self.static = nil
+	end;
+	
+	SetColor = function(self, color)
+		if (self.static) then
+			self.static:SetTextureColor(color)
+		end
+	end;
+	
+	Update = function(self)
+		if (self.static) then
+			self.static:Show(self.is_enabled)
+			self:OnUpdate()
+		end
+	end;
+	
+	OnUpdate = function(self)
+		-- OVERRIDE
+	end;
+}
+
+local function LerpHP(min_hp, max_hp, hp)
+	if (hp <= min_hp) then
+	   return 1
+	elseif (hp >= max_hp) then
+	   return 0
+	else
+	    return 1 - (hp - min_hp) / (max_hp - min_hp)
+	end
+end
+
+class "CDecalBlood" : extends "CDecal"
+{
+	__init = function(self)
+		CDecal.__init(self, "vignette_blood", true, GetARGB(0, 255, 255, 255, 255))
+	end;
+	
+	OnUpdate = function(self)
+		local param = LerpHP(0.2, 0.8, Body.conditions.health:GetPercent())
+		self:SetColor(GetARGB(param*255, 255, 255, 255))
+	end;
+}
+
+class "CDecalPain" : extends "CDecal"
+{
+	__init = function(self)
+		CDecal.__init(self, "vignette_pain", true, GetARGB(0, 255, 255, 255, 255))		
+		self.counter = 0
+		self.animator = CValueAnimator()
+		self.animator.OnValueChanged = function(value)
+			self:SetColor(GetARGB(value, 255, 255, 255, 255))
+		end
+	end;
+	
+	OnUpdate = function(self)
+		self.animator:Update(time_global())
+	end;
+	
+	SetAlpha = function(self, alpha)
+		self.animator:Set(alpha, 500)
+	end;
+	
+	Show = function(self)
+		self.counter = self.counter + 1
+		self:SetAlpha(255)
+	end;
+	
+	Hide = function(self)
+		self.counter = math.max(self.counter - 1, 0)
+		if (self.counter == 0) then
+			self:SetAlpha(0)
+		end
+	end;
+	
+}
+
+-- ====================================================================
+
+Decals = {
+	blood_vignette = CDecalBlood(),
+	pain_vignette = CDecalPain(),
+}
+
+-- ====================================================================
+
+function OnHealthChanged(limb)
+	Decals.blood_vignette:Update()
+end
+
+function OnBuffAdded(buff)
+	if (buff.ICON == "pain") then
+		Decals.pain_vignette:Show()
+	end
+end
+
+function OnBuffRemoved(buff)
+	if (buff.ICON == "pain") then
+		Decals.pain_vignette:Hide()
+	end
+end
+
+-- ==================================================
+
+function ActorOnUpdate()
+	-- Continious update of decals
+	Decals.pain_vignette:Update(time_global())
+end
+
+function ActorOnNetDestroy()
+	-- Clean up decals
+	for name, decal in pairs(Decals) do
+		decal:Destroy()
+	end
+end
+
+function ActorOnFirstUpdate()
+	-- Init decals
+	for name, decal in pairs(Decals) do
+		decal:Init()
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update",ActorOnFirstUpdate)
+	RegisterScriptCallback("actor_on_net_destroy", ActorOnNetDestroy)
+	RegisterScriptCallback("actor_on_update", ActorOnUpdate)
+	
+	RegisterScriptCallback("efth_on_health_changed", OnHealthChanged)
+	RegisterScriptCallback("efth_on_buff_added", OnBuffAdded)
+	RegisterScriptCallback("efth_on_buff_removed", OnBuffRemoved)
+end

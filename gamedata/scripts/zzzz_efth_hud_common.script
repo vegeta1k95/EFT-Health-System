@@ -1,0 +1,201 @@
+local class = zzz_efth_lua.class
+
+-- ============================= DISPLAY STUFF =================================
+
+-- I would kill the person who decided that 
+-- fixed 1024x768 UI screen space is a good idea.
+
+function CorrectRatio(vector)
+	local ratio_w = 1024/(device().width)
+	local ratio_h = 768/(device().height)
+	vector.x = (vector.x * ratio_w)
+	vector.y = (vector.y * ratio_h)
+	return vector
+end
+
+
+-- Aligning of elements helpers:
+-- Horizontal
+function CenterHorizontal(child, parent)
+	
+	local parent_w = parent:GetWidth()
+	local child_w = child:GetWidth()
+	local delta = (parent_w - child_w) / 2
+	
+	local pos = child:GetWndPos()
+	pos.x = delta
+	child:SetWndPos(pos)
+	
+end
+-- Vertical
+function CenterVertical(child, parent)
+	
+	local parent_h = child:GetHeight()
+	local child_h = child:GetHeight()
+	local delta = (parent_h - child_h) / 2
+
+	local pos = child:GetWndPos()
+	pos.y = delta
+	child:SetWndPos(pos)
+end
+
+
+function InitStatic(xml, name, parent)
+	local static = xml:InitStatic(name, parent)
+	static:Show(true)
+	utils_xml.correct_ratio(static)
+	return static
+end
+
+function InitTextWnd(xml, name, parent)
+	local static = xml:InitTextWnd(name, parent)
+	static:Show(true)
+	utils_xml.correct_ratio(static)
+	return static
+end
+
+--==============================================================================
+--============================= Status effects =================================
+--==============================================================================
+
+--[[
+	This class represents a type of active buff: has icon + text counter.
+	
+	NOTE: Counter text is visible only for >1 multiplicity.
+	NOTE: Allows to optionally disable text counter.
+--]]
+class "CUIEffect" 
+{
+	__init = function(self, priority, name, parent, xml, counter_show_one)
+	
+		-- Order of display in a list
+		self.priority = priority
+		
+		-- Icon static
+		self.control = InitStatic(xml, "effect_" .. name, parent)
+		self.control:Show(false)
+		
+		self.width = self.control:GetWidth()
+		self.height = self.control:GetHeight()
+		
+		-- Blinking flag
+		self.expiring = false
+		
+		-- Counter text
+		self.counter = 0
+		self.counter_show_one = counter_show_one
+		self.counter_control = InitTextWnd(xml, "counter_text", self.control)
+		self.counter_control:SetWndPos(vector2():set(self.width + 3, 2))
+		self.counter_control:Show(false)
+		
+	end;
+	
+	IsShown = function(self)
+		return self.control:IsShown()
+	end;
+	
+	IncCounter = function(self)
+		self:SetCounter(self.counter + 1)
+	end;
+	
+	DecCounter = function(self)
+		self:SetCounter(self.counter - 1)
+	end;
+	
+	SetCounter = function(self, number)
+		self.counter = math.max(number, 0)
+		self.counter_control:SetText("x" .. self.counter)
+
+		self.control:Show(self.counter > 0)
+		self.counter_control:Show(self.counter > 1 and (not self.counter_show_one))		
+	end;
+	
+	SetPosition = function(self, x, y)
+		self.control:SetWndPos(vector2():set(x, y))
+	end;
+	
+	SetTransparency = function(self, percent)
+		self.control:SetTextureColor(GetARGB(255*percent, 255, 255, 255))
+		self.counter_control:SetTextColor(GetARGB(255*percent, 255, 255, 255))
+	end;
+}
+
+
+--[[
+	This class Represents a horizontal/vertical bar of `CUIEffect` indicators.
+	
+	NOTE: Icons ordered and sorted based on their priority.
+	
+	WARNING: One has to call `Refresh()` each time visible 
+			 effects change to recalculate list size and positions!
+--]]
+class "CUIEffectsList" 
+{
+	__init = function(self, is_limb, parent, padding)
+		
+		self.padding = padding
+		self.is_horizontal = is_limb
+		
+		local xml = CScriptXmlInit()
+		xml:ParseFile("ui_efth_hud_effects.xml")
+	
+		-- Inflate transparent background
+		self.background = InitStatic(xml, "background", parent)
+		
+		-- Inflate effects
+		self.effects = {
+			painkiller	= CUIEffect(0,  "painkiller",  	self.background, xml, true),
+			thirst		= CUIEffect(1,  "thirst",	   	self.background, xml, true),
+			hunger		= CUIEffect(2,  "hunger",	   	self.background, xml, true),
+			bleed_light = CUIEffect(3,  "bleed_light", 	self.background, xml, false),
+			bleed_heavy = CUIEffect(4,  "bleed_heavy", 	self.background, xml, false),
+			fresh_wound = CUIEffect(5,  "fresh_wound", 	self.background, xml, false),
+			fracture	= CUIEffect(6,  "fracture",    	self.background, xml, false),
+			pain		= CUIEffect(7,  "pain",			self.background, xml, false),
+			tremor		= CUIEffect(8,  "tremor",	  	self.background, xml, true),
+			buff		= CUIEffect(9,  "buff",		  	self.background, xml, true),
+			debuff		= CUIEffect(10, "debuff",	  	self.background, xml, true),
+			concussion	= CUIEffect(11, "concussion",   self.background, xml, true),
+		}
+		
+		-- Limb specific list can only have 1 of each effects
+		if (is_limb) then
+			for name, effect in pairs(self.effects) do
+				effect.counter_show_one = true
+			end
+		end
+	end;
+	
+	GetMinWidth = function(self)
+		return self.background:GetWidth()
+	end;
+	
+	GetMinHeight = function(self)
+		return self.background:GetHeight()
+	end;
+	
+	SetPosition = function(self, x, y)
+		self.background:SetWndPos(vector2():set(x, y))
+	end;
+	
+	Refresh = function(self)
+		local posX = 0
+		local posY = 0
+		
+		local comparator = function(t,a,b) 
+			return t[a].priority < t[b].priority 
+		end
+
+		for name, effect in spairs(self.effects, comparator) do
+			-- We sort only currently shown effects
+			if (effect:IsShown()) then		
+				effect:SetPosition(posX, posY)
+				if (self.is_horizontal) then
+					posX = posX + self.padding + effect.width
+				else
+					posY = posY + self.padding + effect.height			
+				end
+			end
+		end
+	end;
+}

@@ -1,0 +1,203 @@
+![medkit]:efth_limb_specific
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width 									   = 1
+inv_grid_height 								   = 1
+inv_grid_x 										   = 3
+inv_grid_y 										   = 3
+
+boost_health_restore		                       = 0
+
+max_uses                                           = 100
+
+; -- EFTH medicine
+efth_heal										   = 50
+
+
+![medkit_army]:efth_limb_specific
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width 									   = 1
+inv_grid_height 								   = 1
+inv_grid_x 										   = 4
+inv_grid_y 										   = 3
+
+boost_health_restore		                       = 0
+boost_bleeding_restore 		                       = 0
+
+max_uses										   = 100
+dont_stack 										   = true
+
+; -- EFTH
+efth_heal									  	   = 50
+efth_remove_bleed_light							   = 25
+
+
+![medkit_scientic]:efth_limb_specific
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width 									   = 1
+inv_grid_height 								   = 1
+inv_grid_x 										   = 5
+inv_grid_y 										   = 3
+
+boost_health_restore		                       = 0
+boost_bleeding_restore 		                       = 0
+
+max_uses										   = 100
+
+; -- EFTH
+efth_heal										   = 100
+
+
+![survival_kit]:efth_booster
+boost_bleeding_restore		                       = 0
+
+; -- EFTH
+
+
+[medkit_car]:booster_multi, efth_limb_specific
+$spawn 						                       = "food and drugs\medkit"
+kind			                              	   = i_medical
+visual						                       = dynamics\equipments\medical\item_aptechka.ogf
+use_sound					                       = interface\inv_medkit
+
+inv_name					                       = st_medkit_car
+inv_name_short				                       = st_medkit_car_short
+description					                       = st_medkit_car_descr
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width				                       = 2
+inv_grid_height				                       = 1
+inv_grid_x					                       = 9
+inv_grid_y					                       = 3
+
+empty_weight                                       = 0.1
+inv_weight					                       = 0.5
+
+boost_time					                       = 33.4
+boost_radiation_restore		                       = 0.00065
+eat_thirstiness				                       = 0.1
+
+use_condition                                      = true
+script_binding                                     = bind_item.bind
+remove_after_use                                   = true
+max_uses                                           = 220
+
+cost						                       = 2500
+tier 											   = 2
+
+;hide_time_wpn                                     = 4
+
+; -- EFTH
+
+efth_heal										   = 70
+efth_remove_bleed_light							   = 50
+
+
+[medkit_salewa]:booster_multi, efth_limb_specific
+$spawn 						                       = "food and drugs\medkit"
+kind			                              	   = i_medical
+visual						                       = dynamics\equipments\medical\item_aptechka.ogf
+use_sound					                       = interface\inv_medkit
+
+inv_name					                       = st_medkit_salewa
+inv_name_short				                       = st_medkit_salewa_short
+description					                       = st_medkit_salewa_descr
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width				                       = 1
+inv_grid_height				                       = 2
+inv_grid_x					                       = 1
+inv_grid_y					                       = 1
+
+empty_weight                                       = 0.1
+inv_weight					                       = 0.5
+
+eat_thirstiness				                       = 0.1
+
+use_condition                                      = true
+remove_after_use                                   = true
+max_uses                                           = 400
+
+cost						                       = 5000
+tier 											   = 3
+
+;hide_time_wpn                                     = 4
+
+; -- EFTH
+efth_heal										   = 85
+efth_remove_bleed_light							   = 45
+efth_remove_bleed_heavy							   = 175
+
+
+[medkit_ifak]:booster_multi, efth_limb_specific
+$spawn 						                       = "food and drugs\medkit"
+kind			                              	   = i_medical
+visual						                       = dynamics\equipments\medical\item_aptechka.ogf
+use_sound					                       = interface\inv_medkit
+
+inv_name					                       = st_medkit_ifak
+inv_name_short				                       = st_medkit_ifak_short
+description					                       = st_medkit_ifak_descr
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width				                       = 1
+inv_grid_height				                       = 1
+inv_grid_x					                       = 0
+inv_grid_y					                       = 0
+
+empty_weight                                       = 0.1
+inv_weight					                       = 0.5
+
+eat_thirstiness				                       = 0.1
+
+use_condition                                      = true
+remove_after_use                                   = true
+max_uses                                           = 300
+
+cost						                       = 5000
+tier 											   = 3
+
+;hide_time_wpn                                     = 4
+
+; -- EFTH
+efth_heal										   = 50
+efth_remove_bleed_light							   = 30
+efth_remove_bleed_heavy							   = 210
+
+
+[medkit_afak]:booster_multi, efth_limb_specific
+$spawn 						                       = "food and drugs\medkit"
+kind			                              	   = i_medical
+visual						                       = dynamics\equipments\medical\item_aptechka.ogf
+use_sound					                       = interface\inv_medkit
+
+inv_name					                       = st_medkit_afak
+inv_name_short				                       = st_medkit_afak_short
+description					                       = st_medkit_afak_descr
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width				                       = 1
+inv_grid_height				                       = 1
+inv_grid_x					                       = 1
+inv_grid_y					                       = 0
+
+empty_weight                                       = 0.1
+inv_weight					                       = 0.5
+
+eat_thirstiness				                       = 0.1
+
+use_condition                                      = true
+remove_after_use                                   = true
+max_uses                                           = 400
+
+cost						                       = 5000
+tier 											   = 4
+
+;hide_time_wpn                                     = 4
+
+; -- EFTH
+efth_heal										   = 60
+efth_remove_bleed_light							   = 30
+efth_remove_bleed_heavy							   = 170

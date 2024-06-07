@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="windows-1251"?>
+
+<string_table>
+
+	<string id="st_analgin"><text>Analgin painkillers</text></string>
+	<string id="st_analgin_short"><text>Analgin</text></string>
+	<string id="st_analgin_descr">
+		<text>The cheapest and most widely available Metamizole painkillers.\n \n</text>
+	</string>
+	
+	<string id="st_augmentin"><text>Augmentin antibiotic pills</text></string>
+	<string id="st_augmentin_short"><text>Augmentin</text></string>
+	<string id="st_augmentin_descr">
+		<text>Augmentin is a complex versatile antibiotic used to treat bacterial infections.\n \n</text>
+	</string>
+	
+	<string id="st_ibuprofen"><text>Ibuprofen painkillers</text></string>
+	<string id="st_ibuprofen_short"><text>Ibuprofen</text></string>
+	<string id="st_ibuprofen_descr">
+		<text>Ibuprofen is a medication in the nonsteroidal anti-inflammatory drug (NSAID) class that is used for treating pain, fever, and inflammation.\n \n</text>
+	</string>
+	
+	<string id="st_vaseline"><text>Vaseline balm</text></string>
+	<string id="st_vaseline_short"><text>Vaseline</text></string>
+	<string id="st_vaseline_descr">
+		<text>Vaseline, or, more precisely, petroleum jelly, is a versatile ointment used for a number of purposes where its water insulation and lubrication properties are required, for instance, treating small cuts and burns, coating corrosion-prone items or lubricating gear that requires non-acidic lubricants.\n \n</text>
+	</string>
+	
+	<string id="st_alu_splint"><text>Aluminum splint</text></string>
+	<string id="st_alu_splint_short"><text>Alu splint</text></string>
+	<string id="st_alu_splint_descr">
+		<text>An aluminum splint for fixing damaged bones in place.\n \n</text>
+	</string>
+	
+	<string id="st_splint"><text>Immobilizing splint</text></string>
+	<string id="st_splint_short"><text>Splint</text></string>
+	<string id="st_splint_descr">
+		<text>A common splint for fixing damaged bones in place.\n \n</text>
+	</string>
+	
+	<string id="st_cms"><text>CMS surgical kit</text></string>
+	<string id="st_cms_short"><text>CMS</text></string>
+	<string id="st_cms_descr">
+		<text>Compact surgical kit for treatment of bullet wounds and other serious injuries.\n \n</text>
+	</string>
+	
+	<string id="st_surv12"><text>Surv12 field surgical kit</text></string>
+	<string id="st_surv12_short"><text>Surv12</text></string>
+	<string id="st_surv12_descr">
+		<text>An advanced surgical kit with additional high-quality tools, allows treating serious injuries right on the battlefield.\n \n</text>
+	</string>
+	
+	
+	<string id="st_bandage_army"><text>Army bandage</text></string>
+	<string id="st_bandage_army_short"><text>Bandage</text></string>
+	<string id="st_bandage_army_descr">
+		<text>An army-issue gauze bandage.\n \n</text>
+	</string>
+	
+	<string id="st_tourniquet"><text>CAT hemostatic tourniquet</text></string>
+	<string id="st_tourniquet_short"><text>CAT</text></string>
+	<string id="st_tourniquet_descr">
+		<text>CAT (Combat Application Tourniquet) prevents blood loss by blocking the blood outlet by applying pressure to the affected limb. It uses a self-adjusting tensioning system and a tug-resistant buckle.\n \n</text>
+	</string>
+	
+	<string id="st_hemostatic"><text>CALOK-B hemostatic applicator</text></string>
+	<string id="st_hemostatic_short"><text>CALOK-B</text></string>
+	<string id="st_hemostatic_descr">
+		<text>The CALOK-B Applicator hemostatic agent allows you to inject hemostatic granules through a wound opening directly to the source of bleeding in just a few seconds.\n \n</text>
+	</string>
+	
+	<string id="st_medkit_car"><text>Car first aid kit</text></string>
+	<string id="st_medkit_car_short"><text>Car</text></string>
+	<string id="st_medkit_car_descr">
+		<text>Like a fire extinguisher, car first aid kit is crucially important protection measure in the event of an emergency on the road.\n \n</text>
+	</string>
+	
+	<string id="st_medkit_salewa"><text>Salewa first aid kit</text></string>
+	<string id="st_medkit_salewa_short"><text>Salewa</text></string>
+	<string id="st_medkit_salewa_descr">
+		<text>A first aid kit containing bivibag, various types of bandages, and dressing tools.\n \n</text>
+	</string>
+	
+	<string id="st_medkit_ifak"><text>IFAK individual first aid kit</text></string>
+	<string id="st_medkit_ifak_short"><text>IFAK</text></string>
+	<string id="st_medkit_ifak_descr">
+		<text>IFAK is a personal medical kit issued to soldiers in service. The official first aid kit in the U.S. Marine Corps IFAK (Individual First Aid Kit of the United States Marine Corps). The latest, third-generation (gen3), the most well-designed and rich in contents.\n \n</text>
+	</string>
+	
+	<string id="st_medkit_afak"><text>AFAK tactical individual first aid kit</text></string>
+	<string id="st_medkit_afak_short"><text>AFAK</text></string>
+	<string id="st_medkit_afak_descr">
+		<text>AFAK (Adaptive First Aid Kit). A more advanced version of the IFAK individual first aid kit. The compact kit provides the individual soldier or law enforcement officer with a necessary lifesaving equipment to effectively treat injuries commonly associated with combat trauma.\n \n</text>
+	</string>
+	
+	<string id="st_l1"><text>L1 (Norepinephrine) injector</text></string>
+	<string id="st_l1_short"><text>L1</text></string>
+	<string id="st_l1_descr">
+		<text>A sterile disposable syringe with a dose of L1, based on norepinephrine. It is used for short-term increase of strength and endurance, as well as to reduce the pain effect. This activates the implementation of a physiological response such as "hit or run". Increases water and energy consumption.\n \n</text>
+	</string>
+	
+	<string id="st_trimadol"><text>Trimadol stimulant injector</text></string>
+	<string id="st_trimadol_short"><text>Trimadol</text></string>
+	<string id="st_trimadol_descr">
+		<text>An opioid synthetic analgesic developed for special forces operatives. It has a central and spinal cord action (promotes the opening of K+ and Ca2+ channels, causes hyperpolarization of membranes and inhibits the conduction of pain impulses). In addition to the analgesic effect, it increases combat characteristics. Overdose leads to exhaustion of the body after the effects wear off.\n \n</text>
+	</string>
+	
+	<string id="st_propital"><text>Propital regenerative stimulant injector</text></string>
+	<string id="st_propital_short"><text>Propital</text></string>
+	<string id="st_propital_descr">
+		<text>A military-issue stimulant permitted to only be used by medical officers and paramedics. It stimulates regeneration processes by increasing the biosynthesis of purine and pyrimidine bases, RNA, functional, and enzymatic cell elements. Increases metabolism, health, and vitality. Has continuous side effects.\n \n</text>
+	</string>
+	
+	<string id="st_meldonin"><text>Meldonin injector</text></string>
+	<string id="st_meldonin_short"><text>Meldonin</text></string>
+	<string id="st_meldonin_descr">
+		<text>A drug developed for athletes. Allows conducting more intensive training and recovering stamina faster. Temporarily increases strength, endurance,and also accelerates recovery. An undocumented property was also found: it increases the resistance of tissues to physical impact due to internal muscle tension. Because of its properties, it was later adopted by the military as a combat stimulant. Has side effects.\n \n</text>
+	</string>
+	
+	
+	<string id="st_sj1"><text>SJ1 combat stimulant injector</text></string>
+	<string id="st_sj1_short"><text>SJ1</text></string>
+	<string id="st_sj1_descr">
+		<text>A combat stimulant. It is used for gaining strength and endurance before combat. Decreases sensation of pain. Stimulant is allowed for use by the special forces units. Has side effects.\n \n</text>
+	</string>
+	
+	<string id="st_sj6"><text>SJ6 combat stimulant injector</text></string>
+	<string id="st_sj6_short"><text>SJ6</text></string>
+	<string id="st_sj6_descr">
+		<text>A combat stimulant. It is used to increase the body abilities before combat. Stimulant is allowed to use by the special forces units. Has side effects.\n \n</text>
+	</string>
+	
+	<string id="st_zagustin"><text>Zagustin hemostatic drug injector</text></string>
+	<string id="st_zagustin_short"><text>Zagustin</text></string>
+	<string id="st_zagustin_descr">
+		<text>A military-issue drug. Inhibits activators of profibrinolysin and slows down its transformation in fibrinolysin. Temporarily stops the bleeding and increases resistance to bloodloss. Has side effects. Leads to severe dehydration.\n \n</text>
+	</string>
+	
+	<string id="st_etg"><text>eTG-change regenerative stimulant injector</text></string>
+	<string id="st_etg_short"><text>eTG</text></string>
+	<string id="st_etg_descr">
+		<text>A powerful stimulant for regeneration processes. It is used for rapid recovery of a soldier after injury, or during transportation of heavily wounded personnel. Allowed to be used only by medical officers and paramedics. Has strong side effects.\n \n</text>
+	</string>
+	
+</string_table>

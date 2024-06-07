@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+	<string id="efth_limb"><text>LIMB:</text></string>
+	<string id="efth_effects"><text>EFFECTS:</text></string>
+	
+	<string id="efth_bullet"><text>•</text></string>
+	<string id="efth_upto"><text>up to</text></string>
+	<string id="efth_for"><text>for</text></string>
+	<string id="efth_over"><text>over</text></string>
+	<string id="efth_and"><text>and</text></string>
+	
+	<string id="efth_max"><text>Max.</text></string>
+	<string id="efth_sec"><text>sec.</text></string>
+	<string id="efth_min"><text>min.</text></string>
+	
+	<string id="efth_heals"><text>Heals HP</text></string>
+	<string id="efth_restores"><text>Restores destroyed limb</text></string>
+	<string id="efth_removes"><text>Removes</text></string>
+	<string id="efth_adds"><text>Adds</text></string>
+	
+	<string id="efth_skill"><text>Skill</text></string>
+	<string id="efth_skill_endurance"><text>Endurance</text></string>
+	<string id="efth_skill_health"><text>Health</text></string>
+	<string id="efth_skill_immunity"><text>Immunity</text></string>
+	<string id="efth_skill_metabolism"><text>Metabolism</text></string>
+	<string id="efth_skill_strength"><text>Strength</text></string>
+	<string id="efth_skill_stress_resistance"><text>Stress resistance</text></string>
+	<string id="efth_skill_vitality"><text>Vitality</text></string>
+				
+	<string id="efth_condition_health"><text>Health</text></string>
+	<string id="efth_condition_stamina"><text>Stamina</text></string>
+	<string id="efth_condition_energy"><text>Energy</text></string>
+	<string id="efth_condition_hydration"><text>Hydration</text></string>
+	<string id="efth_condition_radiation"><text>Radiation</text></string>
+	<string id="efth_condition_weight"><text>Weight</text></string>
+	
+	<string id="efth_condition_regen_health"><text>Health regen</text></string>
+	<string id="efth_condition_regen_stamina"><text>Stamina regen</text></string>
+	<string id="efth_condition_regen_energy"><text>Energy regen</text></string>
+	<string id="efth_condition_regen_hydration"><text>Hydration regen</text></string>
+	<string id="efth_condition_regen_radiation"><text>Radiation regen</text></string>
+	
+	<string id="efth_delay"><text>delay</text></string>
+	
+	<string id="efth_one_limb"><text>one limb</text></string>
+	<string id="efth_per_use"><text>per use</text></string>
+	<string id="efth_charges"><text>charges</text></string>
+	
+	<string id="efth_light_bleeding"><text>light bleeding</text></string>
+	<string id="efth_heavy_bleeding"><text>heavy bleeding</text></string>
+	<string id="efth_fracture"><text>fracture</text></string>
+	<string id="efth_pain"><text>pain</text></string>
+	<string id="efth_tremor"><text>tremor</text></string>
+	
+	<string id="efth_painkiller"><text>painkiller</text></string>
+	<string id="efth_concussion"><text>concussion</text></string>
+	<string id="efth_bleed"><text>bleeds</text></string>
+
+</string_table>

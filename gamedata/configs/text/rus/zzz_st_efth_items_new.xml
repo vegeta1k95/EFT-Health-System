@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="windows-1251"?>
+
+<string_table>
+
+	<string id="st_analgin"><text>Анальгин</text></string>
+	<string id="st_analgin_short"><text>Анальгин</text></string>
+	<string id="st_analgin_descr">
+		<text>Простейшее и самое дешёвое из известных обезболивающих.\n \n
+		</text>
+	</string>
+	
+	<string id="st_augmentin"><text>Аугментин</text></string>
+	<string id="st_augmentin_short"><text>Аугментин</text></string>
+	<string id="st_augmentin_descr">
+		<text>Аугментин —  полусинтетический антибиотик широкого спектра действия, обладающий активностью против многих грамположительных и грамотрицательных микроорганизмов.\n \n
+		</text>
+	</string>
+	
+	<string id="st_ibuprofen"><text>Ибупрофен</text></string>
+	<string id="st_ibuprofen_short"><text>Ибупрофен</text></string>
+	<string id="st_ibuprofen_descr">
+		<text>Ибупрофен — это лекарство из класса нестероидных противовоспалительных препаратов (НПВП), которое используется для лечения боли, лихорадки и воспаления. Используется как общеукрепляющее средство.\n \n
+		</text>
+	</string>
+	
+	<string id="st_vaseline"><text>Вазелин</text></string>
+	<string id="st_vaseline_short"><text>Вазелин</text></string>
+	<string id="st_vaseline_descr">
+		<text>Средство для наружного применения. Парафин белый мягкий (вазелин) оказывает защитное действие на кожу. В соответствующей лекарственной форме оказывает благоприятное воздействие на раневые процессы, ускоряя заживление.\n \n
+		</text>
+	</string>
+	
+	<string id="st_alu_splint"><text>Алюминиевая шина</text></string>
+	<string id="st_alu_splint_short"><text>Шина</text></string>
+	<string id="st_alu_splint_descr">
+		<text>Медицинская шина, для фиксации поражённых костей при оказании первой помощи.\n \n
+		</text>
+	</string>
+	
+	<string id="st_splint"><text>Шина</text></string>
+	<string id="st_splint_short"><text>Шина</text></string>
+	<string id="st_splint_descr">
+		<text>Медицинская шина, для фиксации поражённых костей при оказании первой помощи.\n \n
+		</text>
+	</string>
+	
+	<string id="st_cms"><text>Хирургический набор CMS</text></string>
+	<string id="st_cms_short"><text>CMS</text></string>
+	<string id="st_cms_descr">
+		<text>Компактный хирургический набор для оказания первой помощи при пулевых ранениях и прочих серьезных травмах и ранах.\n \n
+		</text>
+	</string>
+	
+	<string id="st_surv12"><text>Полевой хирургический набор Surv12</text></string>
+	<string id="st_surv12_short"><text>Surv12</text></string>
+	<string id="st_surv12_descr">
+		<text>КРасширенный хирургический набор с дополнительными и более качественными инструментами, позволяющий работать с серьезными ранениями прямо на поле боя.\n \n
+		</text>
+	</string>
+	
+	
+	<string id="st_bandage_army"><text>Армейский бинт</text></string>
+	<string id="st_bandage_army_short"><text>Бинт</text></string>
+	<string id="st_bandage_army_descr">
+		<text>Асептический армейский бинт для остановки кровотечения и предотвращения попадания в рану инфекции. При обычном кровотечении позволяет перевязать рану, при артериальном - перетянуть артерию.\n \n
+		</text>
+	</string>
+	
+	<string id="st_tourniquet"><text>Кровоостанавливающий турникет CAT</text></string>
+	<string id="st_tourniquet_short"><text>CAT</text></string>
+	<string id="st_tourniquet_descr">
+		<text>CAT (combat application tourniquet) турникет предотвращает кровопотерю, перекрывая канал выхода крови путем прикладывания давления на пострадавшую конечность. Он использует саморегулирующуюся систему натяжения и устойчивую к рывкам пряжку.\n \n
+		</text>
+	</string>
+	
+	<string id="st_hemostatic"><text>Гемостатик CALOK-B</text></string>
+	<string id="st_hemostatic_short"><text>Гемостатик</text></string>
+	<string id="st_hemostatic_descr">
+		<text>CALOK-B Applicator кровоостанавливающее средство, позволяет вводить гранулы гемостатика через отверстие раны непосредственно к источнику кровотечения всего за несколько секунд.\n \n
+		</text>
+	</string>
+	
+	<string id="st_medkit_car"><text>Автомобильная аптечка</text></string>
+	<string id="st_medkit_car_short"><text>Авто</text></string>
+	<string id="st_medkit_car_descr">
+		<text>Как и огнетушитель, автомобильная аптечка является очень необходимым и важным средством защиты в экстренной ситуации на дороге. Также содержит средства для остановки кровотечений.\n \n
+		</text>
+	</string>
+	
+	<string id="st_medkit_salewa"><text>Аптечка Salewa First Aid Kit</text></string>
+	<string id="st_medkit_salewa_short"><text>Salewa</text></string>
+	<string id="st_medkit_salewa_descr">
+		<text>Аптечка, содержащая спасательную термонакидку, разнообразные перевязочные материалы и инструменты.\n \n
+		</text>
+	</string>
+	
+	<string id="st_medkit_ifak"><text>Индивидуальная тактическая аптечка IFAK</text></string>
+	<string id="st_medkit_ifak_short"><text>IFAK</text></string>
+	<string id="st_medkit_ifak_descr">
+		<text>IFAK - это индивидуальный медицинский набор-аптечка, который выдается военнослужащим при несении службы. Официальная аптечка U.S. Marine Corps IFAK (Индивидуальный медицинский набор Корпуса Морской пехоты США). Последнее, третье поколение (gen3), наиболее продуманное и самое богатое по комплектации.\n \n
+		</text>
+	</string>
+	
+	<string id="st_medkit_afak"><text>Индивидуальная тактическая аптечка AFAK</text></string>
+	<string id="st_medkit_afak_short"><text>AFAK</text></string>
+	<string id="st_medkit_afak_descr">
+		<text>AFAK (Adaptive First Aid Kit). Более продвинутая версия персональной аптечки.\n \n
+		</text>
+	</string>
+	
+	<string id="st_l1"><text>Норадреналин</text></string>
+	<string id="st_l1_short"><text>L1</text></string>
+	<string id="st_l1_descr">
+		<text>Стерильный одноразовый шприц с дозой препарата L1, на основе норадреналина. Используется для кратковременного увеличения силы и выносливости, а также для уменьшения ощущения боли. При этом активируется реализация физиологической реакции типа "Бей или беги". Увеличивает потребление воды и энергии.\n \n
+		</text>
+	</string>
+	
+	<string id="st_trimadol"><text>Тримадол</text></string>
+	<string id="st_trimadol_short"><text>Тримадол</text></string>
+	<string id="st_trimadol_descr">
+		<text>Опиоидный синтетический анальгетик, разработанный для бойцов спецподразделений. Обладает центральным действием и действием на спинной мозг (способствует открытию К+ и Са2+ каналов, вызывает гиперполяризацию мембран и тормозит проведение болевых импульсов). Помимо обезболивающего эффекта, повышает боевые характеристики. Передозировка приводит к истощению организма после окончания действия.\n \n
+		</text>
+	</string>
+	
+	<string id="st_propital"><text>Пропитал</text></string>
+	<string id="st_propital_short"><text>Пропитал</text></string>
+	<string id="st_propital_descr">
+		<text>Военный препарат. Стимулирует процессы регенерации, за счет усиления биосинтеза пуриновых и пиримидиновых оснований, РНК, функциональных и ферментативных клеточных элементов. Повышает метаболизм, здоровье и жизнеспособность. Имеет длительные побочные эффекты. Разрешено использовать только военным врачам и фельдшерам.\n \n
+		</text>
+	</string>
+	
+	<string id="st_meldonin"><text>Мельдонин</text></string>
+	<string id="st_meldonin_short"><text>Мельдонин</text></string>
+	<string id="st_meldonin_descr">
+		<text>Боевой стимулятор. Позволяет тканям организма получать меньшие повреждения при физическом воздействии за счет пассивного включения в работу внутренней мускулатуры. Используется для расширения способностей организма перед боем. Разрешен к применению бойцам спецподразделений. Имеет побочные эффекты.\n \n
+		</text>
+	</string>
+	
+	
+	<string id="st_sj1"><text>Боевой стимулятор SJ1</text></string>
+	<string id="st_sj1_short"><text>SJ1</text></string>
+	<string id="st_sj1_descr">
+		<text>Боевой стимулятор. Используется для увеличения силы и выносливости перед боем. Уменьшает ощущение боли. Разрешен к применению бойцами спецподразделений. Имеет побочные эффекты.\n \n
+		</text>
+	</string>
+	
+	<string id="st_sj6"><text>Боевой стимулятор SJ6</text></string>
+	<string id="st_sj6_short"><text>SJ6</text></string>
+	<string id="st_sj6_descr">
+		<text>Боевой стимулятор. Используется для расширения способностей организма перед боем. Разрешен к применению бойцами спецподразделений. Имеет побочные эффекты.\n \n
+		</text>
+	</string>
+	
+	<string id="st_zagustin"><text>Загустин</text></string>
+	<string id="st_zagustin_short"><text>Загустин</text></string>
+	<string id="st_zagustin_descr">
+		<text>Военный препарат. Останавливает активаторы профибринолизина и тормозит его превращение в фибринолизин. Временно останавливает кровотечение и повышает устойчивость к новым. Имеет побочные эффекты. Приводит к сильному обезвоживанию.\n \n
+		</text>
+	</string>
+	
+	<string id="st_etg"><text>eTG-Change</text></string>
+	<string id="st_etg_short"><text>eTG</text></string>
+	<string id="st_etg_descr">
+		<text>Мощный стимулятор процессов регенерации. Применяется для быстрого восстановления бойца после ранения, либо во время транспортировки тяжело раненных. Разрешено использовать только военным врачам и фельдшерам. Имеет сильные побочные эффекты.\n \n
+		</text>
+	</string>
+	
+</string_table>

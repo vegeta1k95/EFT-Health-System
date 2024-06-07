@@ -1,0 +1,64 @@
+-- Add medical items to death spawn. 
+
+local itemlist = {
+
+	-- Bandages
+	bandage_army  = { novice=0.00, trainee=0.00, experienced=0.03, professional=0.04, veteran=0.05, expert=0.06, master=0.07, legend=0.08},
+	tourniquet	  = { novice=0.00, trainee=0.00, experienced=0.03, professional=0.04, veteran=0.05, expert=0.06, master=0.07, legend=0.08},
+	hemostatic	  = { novice=0.00, trainee=0.00, experienced=0.01, professional=0.02, veteran=0.03, expert=0.04, master=0.05, legend=0.05},
+	jgut 		  = { novice=0.02, trainee=0.03, experienced=0.05, professional=0.06, veteran=0.06, expert=0.06, master=0.06, legend=0.08},
+	
+	-- Medkits
+	medkit_car	  = { novice=0.00, trainee=0.00, experienced=0.03, professional=0.04, veteran=0.05, expert=0.06, master=0.07, legend=0.08},
+	medkit_salewa = { novice=0.00, trainee=0.00, experienced=0.03, professional=0.04, veteran=0.05, expert=0.06, master=0.07, legend=0.08},
+	medkit_salewa = { novice=0.00, trainee=0.00, experienced=0.03, professional=0.04, veteran=0.05, expert=0.06, master=0.07, legend=0.08},
+	medkit_ifak	  = { novice=0.00, trainee=0.00, experienced=0.03, professional=0.04, veteran=0.05, expert=0.06, master=0.07, legend=0.08},
+	medkit_afak	  = { novice=0.00, trainee=0.00, experienced=0.03, professional=0.04, veteran=0.05, expert=0.06, master=0.07, legend=0.08},
+	
+	-- Surgery
+	splint		  = { novice=0.03, trainee=0.05, experienced=0.03, professional=0.00, veteran=0.00, expert=0.00, master=0.00, legend=0.00},
+	alu_splint	  = { novice=0.00, trainee=0.00, experienced=0.02, professional=0.03, veteran=0.04, expert=0.05, master=0.06, legend=0.07},
+	cms 		  = { novice=0.00, trainee=0.00, experienced=0.01, professional=0.03, veteran=0.04, expert=0.05, master=0.05, legend=0.05},
+	surv12 		  = { novice=0.00, trainee=0.00, experienced=0.00, professional=0.00, veteran=0.01, expert=0.01, master=0.02, legend=0.02},
+	
+	-- Pills
+	analgin		  = { novice=0.10, trainee=0.10, experienced=0.08, professional=0.07, veteran=0.07, expert=0.06, master=0.05, legend=0.05},
+	augmentin 	  = { novice=0.00, trainee=0.00, experienced=0.01, professional=0.01, veteran=0.02, expert=0.03, master=0.03, legend=0.05},
+	ibuprofen 	  = { novice=0.00, trainee=0.00, experienced=0.01, professional=0.01, veteran=0.02, expert=0.03, master=0.03, legend=0.05},
+	vaseline 	  = { novice=0.00, trainee=0.00, experienced=0.00, professional=0.01, veteran=0.02, expert=0.03, master=0.03, legend=0.04},
+	
+	-- Stimulants
+	morphine 	  = { novice=0.00, trainee=0.00, experienced=0.00, professional=0.00, veteran=0.01, expert=0.01, master=0.02, legend=0.02},
+	l1 			  = { novice=0.00, trainee=0.00, experienced=0.00, professional=0.00, veteran=0.01, expert=0.01, master=0.02, legend=0.02},
+	trimadol 	  = { novice=0.00, trainee=0.00, experienced=0.00, professional=0.00, veteran=0.01, expert=0.01, master=0.02, legend=0.02},
+	propital	  = { novice=0.00, trainee=0.00, experienced=0.00, professional=0.03, veteran=0.05, expert=0.07, master=0.08, legend=0.10},
+	adrenalin 	  = { novice=0.00, trainee=0.00, experienced=0.00, professional=0.00, veteran=0.01, expert=0.01, master=0.02, legend=0.02},
+	sj1			  = { novice=0.00, trainee=0.00, experienced=0.00, professional=0.03, veteran=0.05, expert=0.07, master=0.08, legend=0.10},
+	sj6			  = { novice=0.00, trainee=0.00, experienced=0.00, professional=0.00, veteran=0.02, expert=0.03, master=0.06, legend=0.08},
+	etg			  = { novice=0.00, trainee=0.00, experienced=0.00, professional=0.00, veteran=0.02, expert=0.03, master=0.06, legend=0.08},
+	meldonin	  = { novice=0.00, trainee=0.00, experienced=0.00, professional=0.03, veteran=0.05, expert=0.07, master=0.08, legend=0.10},
+	zagustin	  = { novice=0.00, trainee=0.00, experienced=0.00, professional=0.03, veteran=0.05, expert=0.07, master=0.08, legend=0.10},
+	
+	
+}
+
+local OriginalSpawnCosmetics = death_manager.spawn_cosmetics
+function death_manager.spawn_cosmetics(npc, npc_id, npc_comm, npc_rank, visual, rand_condition)
+
+    OriginalSpawnCosmetics(npc, npc_id, npc_comm, npc_rank, visual, rand_condition)
+
+    for section, ranks in pairs(itemlist) do
+	
+        local max_uses = SYS_GetParam(2, section, "max_uses", 1)
+        local left_uses = math.random(max_uses)
+		
+		-- Determine the chance of drop
+        local chance = itemlist[section][npc_rank] or 0.05
+		
+		-- Roll for drop and spawn item
+        if (math.random() < chance) then
+            alife_create_item(section, npc, {["uses"] = left_uses})
+        end
+		
+    end
+end

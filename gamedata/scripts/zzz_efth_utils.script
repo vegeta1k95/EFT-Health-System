@@ -1,0 +1,162 @@
+local class = zzz_efth_lua.class
+local enum = zzz_efth_lua.enum
+
+class "Color"
+{
+	__init = function(self, r, g, b, a)
+		self.r = r
+		self.g = g
+		self.b = b
+		self.a = a
+	end;
+	
+	FromRGBA = function(r, g, b, a)
+		return Color(r, g, b, a)
+	end;
+	
+	FromHSVA = function(h, s, v, a)
+		
+		local r, g, b
+
+		local i = math.floor(h * 6);
+		local f = h * 6 - i;
+		local p = v * (1 - s);
+		local q = v * (1 - f * s);
+		local t = v * (1 - (1 - f) * s);
+
+		i = i % 6
+
+		if i == 0 then r, g, b = v, t, p
+		elseif i == 1 then r, g, b = q, v, p
+		elseif i == 2 then r, g, b = p, v, t
+		elseif i == 3 then r, g, b = p, q, v
+		elseif i == 4 then r, g, b = t, p, v
+		elseif i == 5 then r, g, b = v, p, q
+		end
+		
+		return Color(r * 255, g * 255, b * 255, a * 255)
+	end;
+	
+	GetInt = function(self)
+		return GetARGB(self.a, self.r, self.g, self.b)
+	end;
+	
+	GetString = function(self)
+		return strformat("%c[%s,%s,%s,%s]", self.a, self.r, self.g, self.b)
+	end;
+	
+	ToHSVA = function(self)
+		local r, g, b, a = self.r / 255, self.g / 255, self.b / 255, self.a / 255
+		local max, min = math.max(r, g, b), math.min(r, g, b)
+		local h, s, v
+		v = max
+
+		local d = max - min
+		if max == 0 then s = 0 else s = d / max end
+		if max == min then
+			h = 0 -- achromatic
+		else
+			if max == r then
+				h = (g - b) / d
+				if g < b then h = h + 6 end
+			elseif max == g then h = (b - r) / d + 2
+			elseif max == b then h = (r - g) / d + 4
+			end
+			h = h / 6
+		end
+		return h, s, v, a
+	end;
+}
+
+enum "Colors" {
+	--					   	   R    G    B    A
+	TRANSPARENT	  	   = Color(0,   0,   0,   0),
+	WHITE		  	   = Color(255, 255, 255, 255),
+	BLACK 		  	   = Color(0,   0,   0,   255),
+
+	OVERLAY_WHITE 	   = Color(150, 150, 150, 255),
+	OVERLAY_RED   	   = Color(110, 0,   0,   255),
+	OVERLAY_GREEN 	   = Color(36,  110, 56,  255),
+	
+	INVENTORY_RED 	   = Color(255, 0,   0,   150),
+	INVENTORY_DEF 	   = Color(150, 150, 150, 150),
+	INVENTORY_GREEN    = Color(0,   255, 0,   255),
+	
+	INVENTORY_HP_GREEN = Color(0,	255, 0,   255),
+	INVENTORY_HP_RED   = Color(255, 0,   0,   255),
+	INVENTORY_TEXT 	   = Color(255, 232, 208, 255),
+	
+	TOOLTIP_DEFAULT	   = Color(140, 140, 140, 255),
+	TOOLTIP_YELLOW 	   = Color(252, 186, 3,   255),
+	TOOLTIP_BLUE	   = Color(100, 100, 255, 255),
+	TOOLTIP_GREEN	   = Color(51,  255, 102, 255),
+	TOOLTIP_RED		   = Color(204, 0,   51,  255),	
+}
+
+-- Interpolate between color in HSV space:
+-- RGB -> HSV -> lerp -> RGB
+function Colors.LerpHSV(color1, color2, t)
+
+	local h1,s1,v1,a1 = color1:ToHSVA()
+	local h2,s2,v2,a2 = color2:ToHSVA()
+
+	local h = h1 + (h2 - h1)*t
+	local s = s1 + (s2 - s1)*t
+	local v = v1 + (v2 - v1)*t
+	local a = a1 + (a2 - a1)*t
+
+	return Color.FromHSVA(h,s,v,a)
+end
+
+-- =============================================================
+
+-- Linear value animator
+class "CValueAnimator"
+{
+    __init = function(self)
+        
+		-- Actual value
+        self.value = 0
+		
+		-- Border values
+        self.value_start = 0
+        self.value_end = 0
+		
+		-- Border times
+        self.t_start = 0
+        self.t_end = 0
+        
+		-- Enabled/disabled flag
+        self.working = false
+        
+    end;
+	
+	SetRaw = function(self, value)
+		self.value = value
+		self.OnValueChanged(self.value)
+	end;
+    
+    Set = function(self, target, interval)
+        self.value_start = self.value
+        self.value_end = target
+        self.t_start = time_global()
+        self.t_end = self.t_start + interval
+		
+		self.working = true
+    end;
+    
+    Update = function(self, time_now)
+	
+        if (self.working) then
+            local percent = clamp((time_now - self.t_start) / (self.t_end - self.t_start), 0, 1)
+            self.value = self.value_start + (self.value_end - self.value_start) * percent
+			self.OnValueChanged(self.value)
+            self.working = (self.value ~= self.value_end)
+        end
+        
+    end;
+	
+	OnValueChanged = function(value)
+		-- OVERRIDE
+	end;
+}

@@ -1,0 +1,919 @@
+local class = zzz_efth_lua.class
+local ChooseRandom = zzz_efth_lua.ChooseRandom
+local VolumeAnimator = zzz_efth_audio.VOLUME_ANIMATOR
+
+-- =============================== BUFFS =======================================
+
+class "CBuffQueue"
+{
+	__init = function(self, is_active)
+		self.queue = {}
+		self.is_active = is_active
+	end;
+	
+	Has = function(self, buff_id)
+		return self.queue[buff_id] ~= nil
+	end;
+	
+	Add = function(self, buff_id, buff)
+		self.queue[buff_id] = buff
+		
+		if (self.is_active) then
+			buff.__class.ACTIVE = buff.__class.ACTIVE + 1
+		end
+		
+		buff:OnAdded()
+		
+		if (self.is_active) then
+			SendScriptCallback("efth_on_buff_added", buff)
+		end
+		
+	end;
+	
+	Remove = function(self, buff_id)
+		local buff = self.queue[buff_id]
+		
+		if (self.is_active) then
+			buff.__class.ACTIVE = math.max(buff.__class.ACTIVE - 1, 0)
+		end
+		
+		buff:OnRemoved()
+		
+		if (self.is_active) then
+			SendScriptCallback("efth_on_buff_removed", buff)
+		end
+		
+		self.queue[buff_id] = nil
+		
+		return buff
+		
+	end;
+	
+	Update = function(self, time_now)
+	
+		for buff_id, buff in pairs(self.queue) do
+			
+			-- If buff is updatable - update
+			if (buff.OnUpdate) then
+				buff:OnUpdate(time_now, not self.is_active)
+			end
+			
+			-- If buff has expired - remove
+			if (buff.expired) then
+				self:Remove(buff_id)
+			end
+			
+		end		
+	end;
+}
+
+class "CBuffList"
+{
+	__init = function(self)
+		self.active = CBuffQueue(true)		-- Pool of active buffs
+		self.suspended = CBuffQueue(false)	-- Pool of suspended buffs
+		self.suspend_counter = 0			-- Number of suspending effects
+		
+		-- List of delayed buffs, they will be added to a queue
+		-- when their delay expires.
+		self.delayed = {}					
+	end;
+	
+	GetKey = function(self, cls_name, limb_name, id)
+		
+		local key = cls_name
+		
+		if (limb_name) then
+			key = key .. "_" .. limb_name
+		end
+		
+		if (id) then
+			key = key .. "_" .. id
+		end
+		
+		return key
+	end;
+	
+	AddDelayed = function(self, delay, limb_name, cls, id, ...)
+		
+		local buff_id = self:GetKey(cls.__classname, limb_name, id)
+		local buff = {}
+		
+		buff.delay = delay
+		buff.limb_name = limb_name
+		buff.cls = cls
+		buff.id = id
+		buff.args = {...}
+		
+		self.delayed[buff_id] = buff
+		
+	end;
+	
+	Add = function(self, limb_name, cls, id, ...)
+		
+		-- Construct ID from given data
+		local buff_id = self:GetKey(cls.__classname, limb_name, id)
+		
+		-- Add buff if not found
+		if (not self.active:Has(buff_id)) and 
+		   (not self.suspended:Has(buff_id)) 
+		then
+			-- Create instance
+			buff = cls(...)
+			-- Fill info
+			buff.ID = buff_id
+			buff.LIMB = limb_name
+			
+			if (buff.IS_SUSPENDABLE) and (self.suspend_counter > 0) then
+				self.suspended:Add(buff_id, buff)
+			else
+				self.active:Add(buff_id, buff)
+			end
+			
+		end
+		
+	end;
+	
+	Remove = function(self, limb_name, cls, id)
+	
+		local buff_id = self:GetKey(cls.__classname, limb_name, id)
+			
+		if (self.active:Has(buff_id)) then
+			self.active:Remove(buff_id)
+		elseif (self.suspended:Has(buff_id)) then
+			self.suspended:Remove(buff_id)
+		elseif (self.delayed[buff_id]) then
+			self.delayed[buff_id] = nil
+		end
+		
+	end;
+	
+	Update = function(self, time_now, time_passed)
+	
+		-- Process delayed buffs
+		for buff_id, buff in pairs(self.delayed) do
+			--printf("delayed buff " .. buff_id .. " has delay " .. buff.delay .. " TIME PASSED " .. time_passed)
+			buff.delay = buff.delay - time_passed
+			if (buff.delay <= 0) then
+				self:Add(buff.limb_name, buff.cls, buff.id, unpack(buff.args))
+				self.delayed[buff_id] = nil
+			end
+		end
+	
+		self.active:Update(time_now)
+		self.suspended:Update(time_now)
+	end;
+	
+	Suspend = function(self)
+	
+		self.suspend_counter = self.suspend_counter + 1
+	
+		for buff_id, buff in pairs(self.active.queue) do
+			if (buff.IS_SUSPENDABLE) then
+				self.suspended.queue[buff_id] = self.active:Remove(buff_id)
+			end
+		end
+	end;
+	
+	Unsuspend = function(self)
+	
+		self.suspend_counter = math.max(self.suspend_counter - 1, 0)
+		
+		if (self.suspend_counter == 0) then
+			for buff_id, buff in pairs(self.suspended.queue) do
+				self.active:Add(buff_id, self.suspended:Remove(buff_id))
+			end
+		end	
+	
+	end;
+	
+	HasBuff = function(self, limb_name, cls, id)
+		local buff_id = self:GetKey(cls.__classname, limb_name, id)
+		return (self.active:Has(buff_id)) or (self.delayed[buff_id] ~= nil)
+	end;
+}
+
+--==============================================================================
+--================================ INTERFACES ==================================
+--==============================================================================
+
+-- Interface that represents periodic effect
+class "CPeriodic"
+{
+	__init = function(self, period)
+		self.tick_period = period or 0
+		self.tick_last = 0
+	end;
+
+-- public:
+
+	OnUpdate = function(self, time_now)
+		local time_passed = time_now - self.tick_last
+		if (self.tick_period <= time_passed) then
+			self:OnTick(time_passed)
+			self.tick_last = time_now
+		end
+	end,
+	
+	-- WARNING: This is to be overriden in inherited classes!
+	OnTick = function(self, time_passed) end;
+
+}
+
+-- Interface that represents durational effect
+class "CDurational"
+{	
+	IS_DURATIONAL = true,
+
+	__init = function(self, duration)
+		self.duration = duration
+		self.last_update = time_global()
+		self.expired = false
+	end;
+
+-- public:
+
+	-- NOTE: Status is considered expiring if remaining duration is less than 5 seconds
+	IsExpiring = function(self)
+		return (self.duration > 0 and self.duration < 5000)
+	end;
+	
+	-- NOTE: Status is considered expired if remaining duration is 0
+	OnUpdate = function(self, time_now)
+		local time_passed = time_now - self.last_update
+		self.last_update = time_now
+		self.duration = clamp(self.duration - time_passed, 0, self.duration)
+		
+		if (self.duration == 0) then
+			self.expired = true
+		elseif (self.duration < 5000) then
+			SendScriptCallback("efth_on_buff_expiring", self)
+		end
+	end;
+}
+
+-- Base class which represents a buff
+class "CBuff"
+{
+	-- Limb to which this buff is attached
+	LIMB = nil,
+	
+	-- Icon to display in HUD interfaces
+	ICON = nil,
+	
+	-- Number of `active` buffs of this type
+	ACTIVE = 0,
+
+	__init = function(self)
+		-- Unique buff ID
+		self.ID = ""
+	end;
+
+-- protected:
+
+	-- Return limb's instance
+	GetLimb = function(self)
+		if (self.LIMB) then
+			return Body.limbs[self.LIMB]
+		end
+	end;
+
+-- public:	
+
+	-- WARNING: This is to be overriden in inherited classes!
+	OnAdded = function(self) end;	
+	OnRemoved = function(self) end;
+
+}
+
+
+--==============================================================================
+--=================================== BUFFS ====================================
+--==============================================================================
+
+-- ============================== BLEED LIGHT ==================================
+
+class "CBuffBleedLight" : extends {"CBuff", "CPeriodic"}
+{
+	ICON = "bleed_light",
+
+	TICK_PERIOD = 6000,
+	TICK_DAMAGE = 0.8,
+	TICK_DAMAGE_RATE =  0.933,
+
+	__init = function(self)
+		CPeriodic.__init(self, CBuffBleedLight.TICK_PERIOD)
+	end;
+	
+	OnTick = function(self, time_passed)
+		Body:ApplyBodyDamage(CBuffBleedLight.TICK_DAMAGE, false)
+	end;
+	
+	OnAdded = function(self)
+		self:GetLimb():RemoveBuff(CBuffFreshWound)
+		
+		-- +0.3 Vitality for each application
+		Body.skills.vitality:AddBase(0.3)
+	end;
+}
+
+class "CBuffBleedLightTemporary" : extends {"CBuffBleedLight", "CDurational"}
+{
+	ICON = "bleed_light",
+
+	__init = function(self)
+		CBuffBleedLight.__init(self)
+		CDurational.__init(self, 20000)
+	end;
+	
+	OnUpdate = function(self, time_now)
+		CBuffBleedLight.OnUpdate(self, time_now)
+		CDurational.OnUpdate(self, time_now)
+	end;
+}
+
+-- ============================= BLEED HEAVY ==================================
+
+class "CBuffBleedHeavy" : extends {"CBuff", "CPeriodic"}
+{
+	ICON = "bleed_heavy",
+	
+	TICK_PERIOD = 4000,
+	TICK_DAMAGE = 0.9,
+	TICK_DAMAGE_RATE =  1.575,
+
+	__init = function(self)
+		CPeriodic.__init(self, CBuffBleedHeavy.TICK_PERIOD)
+	end;
+	
+	OnTick = function(self, time_passed)
+		Body:ApplyBodyDamage(CBuffBleedHeavy.TICK_DAMAGE, false)
+	end;
+	
+	OnAdded = function(self)
+		self:GetLimb():RemoveBuff(CBuffFreshWound)
+		self:GetLimb():RemoveBuff(CBuffBleedLight)
+		
+		-- +0.3 Vitality for each application
+		Body.skills.vitality:AddBase(0.3)
+	end;
+	
+	OnRemoved = function(self)
+		self:GetLimb():AddBuff(CBuffFreshWound)
+	end;
+	
+}
+
+class "CBuffBleedHeavyTemporary" : extends {"CBuffBleedHeavy", "CDurational"}
+{
+	ICON = "bleed_heavy",
+
+	__init = function(self)
+		CBuffBleedHeavy.__init(self)
+		CDurational.__init(self, 20000)
+	end;
+	
+	OnUpdate = function(self, time_now)
+		CBuffBleedHeavy.OnUpdate(self, time_now)
+		CDurational.OnUpdate(self, time_now)
+	end;
+	
+}
+
+-- ======================== HUNGER ============================
+
+class "CBuffHunger" : extends {"CBuff", "CPeriodic"}
+{
+	LIMB = "torso",
+	ICON = "hunger",
+	
+	TICK_PERIOD = 2000,
+	TICK_DAMAGE = 1.0,
+	TICK_DAMAGE_RATE =  0.5,
+		
+	__init = function(self)
+		CPeriodic.__init(self, CBuffHunger.TICK_PERIOD)
+	end;
+	
+	OnTick = function(self, time_passed)
+		Body:ApplyBodyDamage(CBuffHunger.TICK_DAMAGE, true)
+	end;
+	
+	OnAdded = function(self)
+		self:GetLimb():AddBuff(CBuffPain, self.ID)
+		Body:AddBuff(CBuffTremor, self.ID)
+	end;
+	
+	OnRemoved = function(self)
+		self:GetLimb():RemoveBuff(CBuffPain, self.ID)
+		Body:RemoveBuff(CBuffTremor, self.ID)
+	end;
+	
+}
+
+
+-- ==================== THIRST ==============================
+
+class "CBuffThirst" : extends {"CBuff", "CPeriodic"}
+{
+	LIMB = "torso",
+	ICON = "thirst",
+	
+	TICK_PERIOD = 2000,
+	TICK_DAMAGE = 2.0,
+	TICK_DAMAGE_RATE =  1.0,
+	
+	__init = function(self)
+		CPeriodic.__init(self, CBuffThirst.TICK_PERIOD)
+	end;
+	
+	OnTick = function(self, time_passed)
+		Body:ApplyBodyDamage(CBuffThirst.TICK_DAMAGE, true)
+	end;
+	
+	OnAdded = function(self)
+		self:GetLimb():AddBuff(CBuffPain, self.ID)
+		Body:AddBuff(CBuffTremor, self.ID)
+	end;
+	
+	OnRemoved = function(self)
+		self:GetLimb():RemoveBuff(CBuffPain, self.ID)
+		Body:RemoveBuff(CBuffTremor, self.ID)
+	end;
+}
+
+-- ==================== FRESH WOUND =======================
+
+class "CBuffFreshWound" : extends {"CBuff", "CDurational"}
+{
+	ICON = "fresh_wound",
+
+	__init = function(self)
+		if (Body.skills.vitality:IsElite()) then
+			-- Max vitality - 120 sec.
+			CDurational.__init(self, 120000)
+		else
+			-- Default - 240 sec.
+			CDurational.__init(self, 240000)
+		end
+	end;
+	
+	OnFootstep = function(self, is_sprinting)
+		
+		-- Only for sprinting
+		if (not is_sprinting) then
+			return
+		end
+	
+		-- Each sprinting step can cause a light bleed.
+		-- Chance 2%. Cannot happen if hemostatic active.
+		if (CBuffHemostatic.ACTIVE == 0) and (math.random() <= 0.02) then
+			self:GetLimb():AddBuff(CBuffBleedLight)
+		end
+			
+	end;
+	
+	OnJump = function(self)
+		-- Each jump can cause a light bleed.
+		-- Chance: 10%. Cannot happen if hemostatic active.
+		if (CBuffHemostatic.ACTIVE == 0) and (math.random() <= 0.1) then
+			self:GetLimb():AddBuff(CBuffBleedLight)
+		end
+		
+	end;
+}
+
+-- ======================== PAIN ==========================
+
+class "CBuffPain" : extends "CBuff"
+{
+	ICON = "pain",
+	
+	IS_SUSPENDABLE = true,
+	
+	__init = function(self)
+		self.duration_active = 0
+		self.duration_update = time_global()
+		self.tremor_after = 45000
+	end;
+	
+	OnUpdate = function(self, time_now, suspended)
+		if (not suspended) then
+			self.duration_active = self.duration_active + (time_now - self.duration_update)
+			
+			if (self.duration_active >= self.tremor_after) then
+				Body:AddBuff(CBuffTremor, self.ID)
+			end
+		end
+		
+		self.duration_update = time_now
+	end;
+	
+	OnRemoved = function(self)
+		Body:RemoveBuff(CBuffTremor, self.ID)
+	end;
+
+}
+
+class "CBuffPainTemporary" : extends {"CBuffPain", "CDurational"}
+{
+	ICON = "pain",
+	
+	__init = function(self, duration)
+		CDurational.__init(self, duration)
+		CBuffPain.__init(self)
+	end;
+	
+	OnUpdate = function(self, time_now, suspended)
+		CDurational.OnUpdate(self, time_now)
+		CBuffPain.OnUpdate(self, time_now, suspended)
+	end;
+}
+
+-- ====================== CONCUSSION ======================
+
+class "CBuffConcussion" : extends {"CBuff", "CDurational"}
+{
+	ICON = "concussion",
+	
+	VOLUME = 0,
+	
+	__init = function(self, duration)
+		CDurational.__init(self, duration)
+	end;
+	
+	OnAdded = function(self)
+
+		level.add_pp_effector("efth\\concussion.ppe", 99123, false)
+		level.set_pp_effector_factor(99123, 0.5)
+		
+		level.add_pp_effector("efth\\concussion_post.ppe", 99133, false)
+		level.set_pp_effector_factor(99133, 0.3)
+		
+		level.add_cam_effector("camera_effects\\wake_up.anm", 96872, false, "", 0, true, 0.5)
+		
+		local snd = sound_object("efth\\tinnitusx")
+		snd:play(db.actor, 0, sound_object.s2d)
+		snd.volume = 1 * 3
+		
+		CBuffConcussion.VOLUME = math.max(CBuffConcussion.VOLUME, get_console_cmd(2, "snd_volume_eff"))
+		
+		VolumeAnimator:SetRaw(0.01)
+		VolumeAnimator:Set(CBuffConcussion.VOLUME, self.duration + 3000)
+		
+	end;
+	
+	OnRemoved = function(self)	
+		level.remove_pp_effector(99123)
+		level.remove_pp_effector(99133)
+	end;
+
+}
+
+-- ======================== TREMOR ========================
+
+class "CBuffTremor" : extends "CBuff"
+{
+	ICON = "tremor",
+	
+	IS_SUSPENDABLE = true,
+	
+	OnAdded = function(self)
+		self:Update()
+	end;
+	
+	OnRemoved = function(self)
+		self:Update()
+	end;
+	
+	OnWeaponZoom = function(self)
+		self:Update()
+	end;
+	
+	Update = function(self)
+		if (CBuffTremor.ACTIVE > 0 and Body.is_ads) then
+			if (not level.check_cam_effector(8881)) then
+				level.add_cam_effector("camera_effects\\earthquake_100.anm", 8881, true, "", 0,	 true, 0.2)			
+			end
+		else
+			if (level.check_cam_effector(8881)) then
+				level.remove_cam_effector(8881)
+			end
+		end
+	end;
+}
+
+class "CBuffTremorTemporary" : extends {"CBuffTremor", "CDurational"}
+{
+	ICON = "tremor",
+	
+	__init = function(self, duration)
+		CDurational.__init(self, duration)
+	end;
+	
+	OnUpdate = function(self, time_now)
+		CDurational.OnUpdate(self, time_now)
+		CBuffTremor.OnUpdate(self, time_now)
+	end;
+
+}
+
+-- ==================== FRACTURE =============================
+
+class "CBuffFracture" : extends "CBuff"
+{
+	ICON = "fracture",
+
+	OnAdded = function(self)
+		self:GetLimb():AddBuff(CBuffPain, self.ID)
+		self:GetLimb():ApplyPenalty()
+	end;
+	
+	OnRemoved = function(self)
+		self:GetLimb():RemoveBuff(CBuffPain, self.ID)
+		self:GetLimb():RemovePenalty()
+	end;
+}
+
+-- ==================== PENALTY LEG ==========================
+
+class "CBuffBrokenLegDebuff" : extends "CBuff"
+{	
+	IS_SUSPENDABLE = true,
+	
+	LIMP_TIMER = 0,
+	LIMP_DELAY = 500,
+	LIMP_BASE_PATH = "camera_effects\\switch\\",
+	LIMP_ANIMATIONS = {
+		leg_left = {
+			anms = {
+				"camera_effects\\switch\\med2.anm",
+				"camera_effects\\switch\\med3.anm",
+			},
+			id = 99251,
+		},
+		leg_right = {
+			anms = {
+				"camera_effects\\switch\\med1.anm",
+				"camera_effects\\switch\\med4.anm",
+			},
+			id = 99261,
+		},
+		both = {
+			anms = {
+				"camera_effects\\switch\\strong1.anm",
+				"camera_effects\\switch\\strong2.anm",
+				"camera_effects\\switch\\strong4.anm",
+			},
+			id = 99271,
+		},
+	},
+
+	__init = function(self, tag, speed)
+		self.tag = tag
+		self.speed = speed or 1
+	end;
+	
+	OnAdded = function(self)
+		CMovement.DisableSprint()
+		CMovement.AddSpeed(self.tag, self.speed)
+	end;
+	
+	OnRemoved = function(self, tag)
+		CMovement.EnableSprint()
+		CMovement.RemoveSpeed(self.tag)
+	end;
+	
+	OnFootstep = function(self, is_sprinting)		
+		-- WARNING: Player CANNOT sprint when one of 
+		-- 			the legs is broken, unless he has an active painkiller!
+		-- MEANING: Since painkillers temporary remove penalties - there is NO camera
+		-- 			shake when sprinting.
+		-- (Can be changed in future)
+		if (not is_sprinting) then
+				
+			local key
+			
+			if (CBuffBrokenLegDebuff.ACTIVE == 2) then
+				key = "both"
+			else
+				key = self.LIMB
+			end
+			
+			local time_current = time_global()
+			
+			-- If we have fractured/destroyed legs - apply camera swing.
+			-- But only if no active painkillers
+			if (time_current > CBuffBrokenLegDebuff.LIMP_TIMER) and (CBuffPainkiller.ACTIVE == 0) then
+			
+				local anm = CBuffBrokenLegDebuff.LIMP_ANIMATIONS[key]
+				local anm_id = anm.id
+				local anm_path = ChooseRandom(anm.anms)
+				
+				level.add_cam_effector(anm_path, anm_id, false, "", 0, false, 2)
+				
+				CBuffBrokenLegDebuff.LIMP_TIMER = time_current + CBuffBrokenLegDebuff.LIMP_DELAY
+			end
+			
+		end
+		
+	end;
+}
+
+class "CBuffBrokenLegDamage" : extends "CBuff"
+{	
+	OnFootstep = function(self, is_sprinting)
+		-- If we have fractured/destroyed legs - sprintning will damage it.
+		-- Chance - 5% on each step.
+		if (is_sprinting) and (math.random() <= 0.05) then
+			
+			-- Apply damage
+			Body:ApplyDamage(self:GetLimb(), 2, EHitTypes.Fall)
+			
+			-- Play sound of pain
+			local filename = "efth\\pain_" .. math.random(1,13)
+			sound_object(filename):play(db.actor, 0, sound_object.s2d)
+		
+		end
+		
+	end;
+}
+
+-- ==================== PENALTY ARM ==========================
+
+class "CBuffBrokenArmDebuff" : extends "CBuff"
+{	
+	IS_SUSPENDABLE = true,
+	
+	OnAnimationStart = function(self, anm_table, obj)
+		local anm_name = anm_table.anm_name
+		local anm_speed = anm_table.anm_speed * 0.66
+		
+		if string.find(anm_name, "reload") or 
+		   string.find(anm_name, "show") or
+		   string.find(anm_name, "hide") or
+		   string.find(anm_name, "aim_start") or 
+		   string.find(anm_name, "aim_end") or 
+		   string.find(anm_name, "switch")
+		then
+			anm_table.anm_speed = anm_speed
+		end
+		
+	end;
+}
+
+-- ======================== SKILLS ===========================
+
+class "CBuffSkill" : extends {"CBuff", "CDurational"}
+{
+	ICON = "buff",
+
+	__init = function(self, skill, amount, duration)
+		CDurational.__init(self, duration)
+		self.skill = skill
+		self.amount = amount
+		
+		if (self.amount > 0) then
+			self.ICON = "buff"
+		else
+			self.ICON = "debuff"
+		end
+		
+	end;
+	
+	OnAdded = function(self)
+		printf("Skill boost " .. self.skill .. " by " .. self.amount .. " applied")
+		Body.skills[self.skill]:AddBonus(self.amount)
+	end;
+	
+	OnRemoved = function(self)
+		printf("Skill boost " .. self.skill .. " by " .. self.amount .. " removed")
+		Body.skills[self.skill]:AddBonus(-self.amount)
+	end;
+	
+}
+
+-- ====================== HEMOSTATIC =========================
+
+class "CBuffHemostatic" : extends {"CBuff", "CDurational"}
+{
+	ICON = "buff",
+
+	__init = function(self, duration)
+		CDurational.__init(self, duration)
+	end;
+	
+	OnAdded = function(self, duration)
+		-- Hemostatic removes all bleedings on application
+		for name, limb in pairs(Body.limbs) do
+			limb:RemoveBuff(CBuffBleedLight)
+			limb:RemoveBuff(CBuffBleedHeavy)
+		end
+	end;
+}
+
+
+-- ==================== PAINKILLER =========================
+
+class "CBuffPainkiller" : extends {"CBuff", "CDurational"}
+{
+	ICON = "painkiller",
+	
+	__init = function(self, duration)
+		CDurational.__init(self, duration)
+	end;
+	
+	OnAdded = function(self, duration)
+		-- Painkiller applied - suspend related effects
+		Body.buffs:Suspend()
+	end;
+	
+	OnRemoved = function(self)
+		-- Painkiller expired - unsuspend effects
+		Body.buffs:Unsuspend()
+	end;
+}
+
+-- =================== CONCUSSION HEAL ====================
+
+class "CBuffConcussionHeal" : extends {"CBuff", "CDurational"}
+{
+	ICON = "buff",
+	
+	__init = function(self, duration)
+		CDurational.__init(self, duration)
+	end;
+	
+	OnAdded = function(self, duration)
+		Body:RemoveBuff(CBuffConcussion)
+	end;
+	
+}
+
+-- ================== CONDITIONS  ======================
+
+class "CBuffConditionMax" : extends {"CBuff", "CDurational"}
+{
+	ICON = "buff",
+	
+	__init = function(self, condition, amount, duration)
+		CDurational.__init(self, duration)
+		self.condition = condition
+		self.amount = amount
+		if (amount >= 0) then
+			self.ICON = "buff"
+		else
+			self.ICON = "debuff"
+		end
+	end;
+	
+	OnAdded = function(self)
+		printf("Applied " .. self.condition .. " max buff " .. self.amount .. " for " .. self.duration/1000 .. " seconds" )
+		Body.conditions[self.condition]:AddMax(self.amount)
+	end;
+	
+	OnRemoved = function(self)
+		printf("Removed " .. self.condition .. " max buff " .. self.amount)
+		Body.conditions[self.condition]:AddMax(-self.amount)
+	end;
+}
+
+class "CBuffConditionRegen" : extends {"CBuff", "CDurational"}
+{
+	ICON = "buff",
+	
+	__init = function(self, condition, amount, duration)
+		CDurational.__init(self, duration)
+		self.condition = condition
+		self.amount = amount
+		if (amount >= 0) then
+			self.ICON = "buff"
+		else
+			self.ICON = "debuff"
+		end
+	end;
+	
+	OnAdded = function(self)
+		Body.conditions[self.condition]:AddRegen(self.amount)
+	end;
+	
+	OnRemoved = function(self)
+		Body.conditions[self.condition]:AddRegen(-self.amount)
+	end;
+}
+
+
+class "CBuffCampfire" : extends {"CBuff", "CPeriodic"}
+{
+	ICON = nil,
+	
+	__init = function(self, amount, period)
+		CPeriodic.__init(self, period)
+		self.amount = amount
+		self.TICK_DAMAGE_RATE = -amount * 7 / period * 1000
+	end;
+	
+	OnTick = function(self)
+		Body:ApplyBodyDamage(-self.amount, false)
+	end;
+}

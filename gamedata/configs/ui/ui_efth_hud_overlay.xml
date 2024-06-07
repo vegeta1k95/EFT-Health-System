@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<w>
+
+	<overlay_bg x="5" y="5" width="148" height="264" la_alpha="1" stretch="1">
+		<texture>ui_efth_overlay_bg</texture>
+	</overlay_bg>
+	
+	<overlay_head x="55" y="18" width="41" height="45" la_alpha="1" stretch="1">
+		<texture>ui_efth_overlay_head</texture>
+	</overlay_head>
+	
+	<overlay_torso x="43" y="45" width="60" height="64" la_alpha="1" stretch="1">
+		<texture>ui_efth_overlay_torso</texture>
+	</overlay_torso>
+	
+	<overlay_stomach x="43" y="86" width="56" height="50" la_alpha="1" stretch="1">
+		<texture>ui_efth_overlay_stomach</texture>
+	</overlay_stomach>
+	
+	<overlay_arm_left x="83" y="51" width="47" height="98" la_alpha="1" stretch="1">
+		<texture>ui_efth_overlay_arm_left</texture>
+	</overlay_arm_left>
+	
+	<overlay_arm_right x="18" y="54" width="45" height="97" la_alpha="1" stretch="1">
+		<texture>ui_efth_overlay_arm_right</texture>
+	</overlay_arm_right>
+	
+	<overlay_leg_left x="64" y="79" width="50" height="170" la_alpha="1" stretch="1">
+		<texture>ui_efth_overlay_leg_left</texture>
+	</overlay_leg_left>
+	
+	<overlay_leg_right x="30" y="117" width="48" height="129" la_alpha="1" stretch="1">
+		<texture>ui_efth_overlay_leg_right</texture>
+	</overlay_leg_right>
+	
+</w>

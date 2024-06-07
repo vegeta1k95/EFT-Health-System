@@ -1,0 +1,108 @@
+[alu_splint]:booster_multi, efth_limb_specific
+$spawn 						                       = "food and drugs\bandage"
+kind			                                   = i_medical
+visual	                                           = efth\dynamics\itm_alusplint.ogf
+use_sound					                       = interface\inv_splint
+
+inv_name					                       = st_alu_splint
+description					                       = st_alu_splint_descr
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width 									   = 1
+inv_grid_height 								   = 1
+inv_grid_x 										   = 4
+inv_grid_y 										   = 0
+
+inv_weight					                       = 0.4
+empty_weight					                   = 0.01
+
+use_condition                            		   = true
+max_uses                                 		   = 3
+
+cost						                       = 1500
+tier 											   = 1
+
+; -- EFTH
+efth_remove_fracture							   = 1
+
+
+[splint]:booster, efth_limb_specific
+$spawn 						                       = "food and drugs\bandage"
+kind			                                   = i_medical
+visual	                                           = efth\dynamics\itm_splint.ogf
+use_sound					                       = interface\inv_splint
+
+inv_name					                       = st_splint
+description					                       = st_splint_descr
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width 									   = 1
+inv_grid_height 								   = 1
+inv_grid_x 										   = 3
+inv_grid_y 										   = 0
+
+inv_weight					                       = 0.2
+
+cost						                       = 600
+tier 											   = 1
+
+; -- EFTH
+efth_remove_fracture							   = 1
+
+
+
+[cms]:booster_multi, efth_limb_specific
+$spawn 						                       = "food and drugs\medkit_ai1"
+kind			                               	   = i_medical
+visual											   = efth\dynamics\itm_cms.ogf
+use_sound					                       = interface\inv_medkit
+
+inv_name					                       = st_cms
+description					                       = st_cms_descr
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width 									   = 2
+inv_grid_height 								   = 1
+inv_grid_x 										   = 6
+inv_grid_y 										   = 3
+
+inv_weight					                       = 0.7
+
+use_condition                                      = true
+max_uses                                           = 5
+remove_after_use                                   = true
+
+cost						                       = 8000
+tier 											   = 3
+
+; -- EFTH
+efth_restore_limb								   = 1
+
+
+[surv12]:booster_multi, efth_limb_specific
+$spawn 						                       = "food and drugs\medkit_ai1"
+kind			                               	   = i_medical
+visual											   = efth\dynamics\itm_cms.ogf
+use_sound					                       = interface\inv_medkit
+
+inv_name					                       = st_surv12
+description					                       = st_surv12_descr
+
+icons_texture 									   = ui\ui_efth_meds
+inv_grid_width 									   = 2
+inv_grid_height 								   = 1
+inv_grid_x 										   = 4
+inv_grid_y 										   = 1
+
+inv_weight					                       = 0.7
+
+use_condition                                      = true
+max_uses                                           = 15
+remove_after_use                                   = true
+
+cost						                       = 8000
+tier 											   = 3
+
+; -- EFTH
+efth_remove_fracture							   = 1
+efth_restore_limb								   = 1
