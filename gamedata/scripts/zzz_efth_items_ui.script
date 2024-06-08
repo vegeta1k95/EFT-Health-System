@@ -66,15 +66,19 @@ function utils_ui.UICellItem.AddMedicineUses(self, xml, obj, sec)
 		return
 	end
 	
-	local left_uses = obj:get_remaining_uses()
+	local item = CItem(obj)
+	
+	local ratio = ((item.cache) and (item.cache.charges_ratio)) or 1
+	local charges_left = item:GetCharges() * ratio
+	local charges_max = max_uses * ratio
 	
 	self.med_uses = self.med_uses or meds_xml:InitTextWnd("medicine_uses", self.cell)
 	self.med_uses:SetEllipsis(false)
-	self.med_uses:SetText(left_uses .. "/" .. max_uses)
+	self.med_uses:SetText(charges_left .. "/" .. charges_max)
 	self.med_uses:AdjustHeightToText()
 	self.med_uses:AdjustWidthToText()
 	
-	if (left_uses / max_uses < 0.5) then
+	if (charges_left / charges_max < 0.5) then
 		self.med_uses:SetTextColor(Colors.INVENTORY_HP_RED:GetInt())
 	end
 	

@@ -10,15 +10,17 @@ ITEMS_CACHE = {}
 
 function CacheItemSection(section)
 
+	local charges_ratio = SYS_GetParam(2, section, "efth_charges_ratio", 1)
+
 	local item = {
 	
 		-- Limb-specific effects
-		
-		can_heal 					= SYS_GetParam(2, section, "efth_heal", 0),
-		cost_restore_limb 			= SYS_GetParam(2, section, "efth_restore_limb", 0),
-		cost_remove_bleed_light 	= SYS_GetParam(2, section, "efth_remove_bleed_light", 0),
-		cost_remove_bleed_heavy 	= SYS_GetParam(2, section, "efth_remove_bleed_heavy", 0),
-		cost_remove_fracture		= SYS_GetParam(2, section, "efth_remove_fracture", 0),
+		charges_ratio 				= charges_ratio,
+		can_heal 					= math.floor(SYS_GetParam(2, section, "efth_heal", 0) / charges_ratio),
+		cost_restore_limb 			= math.ceil(SYS_GetParam(2, section, "efth_restore_limb", 0) / charges_ratio),
+		cost_remove_bleed_light 	= math.ceil(SYS_GetParam(2, section, "efth_remove_bleed_light", 0) / charges_ratio),
+		cost_remove_bleed_heavy 	= math.ceil(SYS_GetParam(2, section, "efth_remove_bleed_heavy", 0) / charges_ratio),
+		cost_remove_fracture		= math.ceil(SYS_GetParam(2, section, "efth_remove_fracture", 0) / charges_ratio),
 			
 		-- Body-wide effects
 		
@@ -113,7 +115,7 @@ class "CItem"
 		self.item = item
 		self.section = (item) and (item:section())
 		self.cache = (self.section) and (ITEMS_CACHE[self.section])
-		
+				
 		self.is_limb_specific = SYS_GetParam(1, self.section, "efth_limb_specific", false)
 		self.is_booster = SYS_GetParam(1, self.section, "efth_booster", false)
 	end;
@@ -122,8 +124,8 @@ class "CItem"
 		return self.item:get_remaining_uses()
 	end;
 	
-	SetCharges = function(self, value)
-		self.item:set_remaining_uses(value)
+	SetCharges = function(self, uses)
+		self.item:set_remaining_uses(uses)
 	end;
 	
 	UseBooster = function(self)
@@ -282,8 +284,6 @@ class "CItem"
 			
 			local priority = self:GetLimbPriority(limb, charges_left)
 			
-			printf("Limb " .. name .. " prio " .. priority)
-			
 			-- If item can do something
 			if (priority > 0) then
 			
@@ -368,8 +368,8 @@ class "CItem"
 		   (self.cache.can_heal > 0) and (charges > 0)
 		then
 			-- Restore limb HP up to item cost-per-use
-			local amount = math.min(self.cache.can_heal, charges, limb.hp_max_current - limb.hp)
-			limb:ApplyHeal(amount)
+			local amount = math.min(self.cache.can_heal, charges, (limb.hp_max_current - limb.hp) / self.cache.charges_ratio)
+			limb:ApplyHeal(amount * self.cache.charges_ratio)
 			
 			charges = charges - amount
 			self:SetCharges(charges)

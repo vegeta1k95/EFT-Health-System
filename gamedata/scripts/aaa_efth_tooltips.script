@@ -125,11 +125,13 @@ function ui_item.build_desc_footer(obj, sec, str)
 	if (item.is_limb_specific) then
 		footer:AddTitle(gc("efth_limb"))
 		
+		local ratio = item.cache.charges_ratio
+		
 		if (item.cache.can_heal > 0) then
 			local builder = CStringBuilder()
 			builder:Append(gc("efth_heals"), Colors.TOOLTIP_GREEN)
 			builder:Append("-")
-			builder:Append(item.cache.can_heal, Colors.TOOLTIP_BLUE)
+			builder:Append(item.cache.can_heal * ratio, Colors.TOOLTIP_BLUE)
 			footer:AddItem(builder:Trim().str)
 		end
 		
@@ -144,7 +146,7 @@ function ui_item.build_desc_footer(obj, sec, str)
 			builder:Append(gc("efth_removes"))
 			builder:Append(gc("efth_light_bleeding"), Colors.TOOLTIP_RED) 
 			builder:Append("-")
-			builder:Append(item.cache.cost_remove_bleed_light, Colors.TOOLTIP_BLUE)
+			builder:Append(item.cache.cost_remove_bleed_light * ratio, Colors.TOOLTIP_BLUE)
 			footer:AddItem(builder:Trim().str)
 		end
 		
@@ -153,7 +155,7 @@ function ui_item.build_desc_footer(obj, sec, str)
 			builder:Append(gc("efth_removes"))
 			builder:Append(gc("efth_heavy_bleeding"), Colors.TOOLTIP_RED) 
 			builder:Append("-")
-			builder:Append(item.cache.cost_remove_bleed_heavy, Colors.TOOLTIP_BLUE)
+			builder:Append(item.cache.cost_remove_bleed_heavy * ratio, Colors.TOOLTIP_BLUE)
 			footer:AddItem(builder:Trim().str)
 		end
 		
@@ -162,7 +164,7 @@ function ui_item.build_desc_footer(obj, sec, str)
 			builder:Append(gc("efth_removes"))
 			builder:Append(gc("efth_fracture"), Colors.TOOLTIP_RED) 
 			builder:Append("-")
-			builder:Append(item.cache.cost_remove_fracture, Colors.TOOLTIP_BLUE)
+			builder:Append(item.cache.cost_remove_fracture * ratio, Colors.TOOLTIP_BLUE)
 			footer:AddItem(builder:Trim().str)
 		end
 		

@@ -791,10 +791,10 @@ end
 function OnKeyPressed(dik)
 	--[[
 	if dik == DIK_keys.DIK_H then
-		PrintTable(Body.buffs)
+		Body:ApplyDamage(Body.limbs.leg_right, 40, EHitTypes.Fall)
 		xr_sound.set_sound_play(db.actor:id(), "pda_tips")
 	elseif dik == DIK_keys.DIK_J then
-		printf("L:" .. Body.limbs.leg_left.penalty_counter .. " R:" .. Body.limbs.leg_right.penalty_counter)
+		
 		xr_sound.set_sound_play(db.actor:id(), "pda_tips")
 	end
 	--]]

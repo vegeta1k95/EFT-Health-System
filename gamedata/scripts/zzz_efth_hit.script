@@ -94,16 +94,16 @@ enum "EHitTypes"
 	LightBurn		= CHitType(10,   0, 	0), 	-- Thermal fields / campfires
 	Unknown			= CHitType(11,   0, 	0), 	-- Dummy type (MAX ENGINE TYPE)
 	Fall			= CHitType(12,   0, 	1), 	-- Fall damage (NON ENGINE TYPE, for convenience)
-	
-	GetByID = function(id)
-		for name, hit_type in pairs(EHitTypes) do
-			if (hit_type.ID == id) then
-				return hit_type
-			end
-		end
-		return EHitTypes.Unknown
-	end;
 }
+
+function GetHitTypeByID(id)
+	for name, hit_type in pairs(EHitTypes) do
+		if (hit_type.ID == id) then
+			return hit_type
+		end
+	end
+	return EHitTypes.Unknown
+end
 
 ANOMALIES_LIMBS = {
 	[EHitTypes.Burn.ID] 		= { "torso", "stomach", "arm_left", "arm_right", "leg_left", "leg_right" },	-- Thermal
@@ -155,7 +155,7 @@ function CBody:OnHit(hit, bone_id)
 	
 	local damage = hit.power * 100	* GetConfig("general_damage_multiplier")	-- Convert float damage range to normal damage range * damage modifier
 	local source = hit.draftsman											    -- Who did this
-	local hit_type = EHitTypes.GetByID(hit.type)
+	local hit_type = GetHitTypeByID(hit.type)
 	local limb_name
 	
 	-- Fall damage - distribute halved damage to each leg
