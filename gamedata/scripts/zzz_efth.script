@@ -311,7 +311,9 @@ class "CBody"
 			limb:OnHealthChanged()
 		end	
 		
+		-- Restore buffs status after load
 		for buff_id, buff in pairs(self.buffs.active.queue) do
+			buff.__class.ACTIVE = buff.__class.ACTIVE + 1
 			buff:OnAdded()
 		end
 	
