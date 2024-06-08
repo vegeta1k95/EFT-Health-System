@@ -311,10 +311,10 @@ class "CBody"
 			limb:OnHealthChanged()
 		end	
 		
-		-- Restore buffs status after load
+		-- Restore buffs active count after load
 		for buff_id, buff in pairs(self.buffs.active.queue) do
 			buff.__class.ACTIVE = buff.__class.ACTIVE + 1
-			buff:OnAdded()
+			buff:OnLoaded()
 		end
 	
 	end;
@@ -791,11 +791,10 @@ end
 function OnKeyPressed(dik)
 	--[[
 	if dik == DIK_keys.DIK_H then
-		--Body:ApplyDamage(Body.limbs.leg_left, 30, EHitTypes.Wound_2)
-		Body.limbs.leg_left:AddBuff(CBuffFracture)
+		PrintTable(Body.buffs)
 		xr_sound.set_sound_play(db.actor:id(), "pda_tips")
 	elseif dik == DIK_keys.DIK_J then
-		Body:ApplyDamage(Body.limbs.arm_right, 30, EHitTypes.Wound_2)
+		printf("L:" .. Body.limbs.leg_left.penalty_counter .. " R:" .. Body.limbs.leg_right.penalty_counter)
 		xr_sound.set_sound_play(db.actor:id(), "pda_tips")
 	end
 	--]]

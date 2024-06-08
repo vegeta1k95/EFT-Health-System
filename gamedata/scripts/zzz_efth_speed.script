@@ -1,97 +1,78 @@
 local class = zzz_efth_lua.class
-
-if (speed) then
 	
-	-- Use Arti's script
-	
-	AddSpeed = speed.add_speed
-	RemoveSpeed = speed.remove_speed
-
-else
-
-	-- A copy of Arti's script
-	
-	local speeds = {}
-	local sprint_modifiers = {}
-	local run_modifiers = {}
-	local not_first_update = true
-
-	local function actor_on_first_update() 
-		speeds[0] = db.actor:get_actor_run_coef()
-		speeds[1] = db.actor:get_actor_runback_coef()
-		speeds[2] = db.actor:get_actor_sprint_koef()
-		not_first_update = false
-	end
-
-
-	function on_game_start()
-		RegisterScriptCallback("actor_on_first_update",actor_on_first_update)
-	end
-	
-	local function update_speeds()
-		if not_first_update then
-			actor_on_first_update()
-		end
-		local run_coef = 1
-		for k,v in pairs(run_modifiers) do
-			run_coef = run_coef * v
-		end
-		local sprint_coef = 1
-		for k,v in pairs(sprint_modifiers) do
-			sprint_coef = sprint_coef * v
-		end
-		db.actor:set_actor_run_coef(clamp(speeds[0] * run_coef, 1, 10))
-		db.actor:set_actor_runback_coef(clamp(speeds[1] * run_coef, 1, 10))
-		db.actor:set_actor_sprint_koef(clamp(speeds[2] * sprint_coef, 1, 10))
-	end
-
-	-- Usage: Add a speed modifier.
-	-- Once a speed modifier is added, speed will be recalculated and set.
-	-- run_modifiers affects run and runback, sprint_modifiers affects sprint
-	-- Params:
-	-- speed_key - Name of speed multiplier you want to add
-	-- speed_mult - Speed multiplier as a number (e.g. 0.5 will halve speed)
-	-- is_sprint - Boolean, if true adds to sprint modifier and updates accordingly, false adds to run modifier
-	-- force - Boolean, will overwrite existing speed.
-	-- Returns true if speed added successfully, false if key already exists (and nothing happens as result)
-	function AddSpeed(speed_key, speed_mult, is_sprint, force)
-		if (is_sprint) then
-			if force or not sprint_modifiers[speed_key] then
-				-- printf("sprint: " .. speed_key .. " " .. speed_mult)
-				sprint_modifiers[speed_key] = speed_mult
-				update_speeds()
-				return true
-			else
-				return false
-			end
-		else
-			if force or not run_modifiers[speed_key] then
-				run_modifiers[speed_key] = speed_mult
-				update_speeds()
-				return true
-			else
-				return false
-			end
-		end
-	end
-
-	-- Usage: Drop a speed modifier. Once a speed modifier is dropped, speed will be recalculated and set. 
-	-- Params
-	-- speed_key - Name of speed multiplier to drop. Will drop from both tables.
-	function RemoveSpeed(speed_key)
-		if sprint_modifiers[speed_key] then
-			sprint_modifiers[speed_key] = nil
-		end
-		if run_modifiers[speed_key] then
-			run_modifiers[speed_key] = nil
-		end
-		update_speeds()
-	end
-	
-end
+-- Base on Arti's `speed.script`
 
 class "CMovement"
 {
+	
+	DEFAULT_MOD_RUN 	= 0,
+	DEFAULT_MOD_RUNBACK = 0,
+	DEFAULT_MOD_SPRINT	= 0,
+	
+	INITIALIZED = false,
+	
+	SpeedModifiers = {
+		Run    = {},
+		Sprint = {},
+	},
+	
+	Initialize = function()
+		CMovement.DEFAULT_MOD_RUN = db.actor:get_actor_run_coef()
+		CMovement.DEFAULT_MOD_RUNBACK = db.actor:get_actor_runback_coef()
+		CMovement.DEFAULT_MOD_SPRINT = db.actor:get_actor_sprint_koef()
+
+		CMovement.INITIALIZED = true
+	end;
+	
+	UpdateModifiers = function()
+		
+		-- Initialized if not yet
+		if (CMovement.INITIALIZED == false) then
+			CMovement.Initialize()
+		end
+		
+		-- Speed modifiers
+		local mod_run = 1
+		local mod_sprint = 1
+		
+		-- Accumulate modifiers
+		for key, mod in pairs(CMovement.SpeedModifiers.Run) do
+			mod_run = mod_run * mod
+		end
+		
+		for key, mod in pairs(CMovement.SpeedModifiers.Sprint) do
+			mod_sprint = mod_sprint * mod
+		end
+		
+		printf("SPEEDS MOD " .. mod_run)
+		
+		-- Clamp modifiers
+		local coeff_run 	= clamp(CMovement.DEFAULT_MOD_RUN * mod_run, 1, 10)
+		local coeff_runback = clamp(CMovement.DEFAULT_MOD_RUNBACK * mod_run, 1, 10)
+		local coeff_sprint  = clamp(CMovement.DEFAULT_MOD_SPRINT * mod_sprint, 1, 10)
+		
+		-- Set modifiers
+		db.actor:set_actor_run_coef(coeff_run)
+		db.actor:set_actor_runback_coef(coeff_runback)
+		db.actor:set_actor_sprint_koef(coeff_sprint)
+		
+	end;
+	
+	-- ======================= RUN / RUNBACK =======================
+		
+	AddSpeed = function(id, speed)
+		CMovement.SpeedModifiers.Run["efth_speed_" .. id] = speed
+		CMovement.UpdateModifiers()
+	end;
+	
+	RemoveSpeed = function(id)
+		CMovement.SpeedModifiers.Run["efth_speed_" .. id] = nil
+		CMovement.UpdateModifiers()
+	end;
+	
+	
+	-- ======================= SPRINT ===============================
+	
 	EnableSprint = function()
 		db.actor:allow_sprint(true)
 	end;
@@ -100,12 +81,13 @@ class "CMovement"
 		db.actor:allow_sprint(false)
 	end;
 	
-	AddSpeed = function(id, speed)
-		AddSpeed("efth_speed_" .. id, speed, false, true)
+	AddSpeedSprint = function(id, speed)
+		CMovement.SpeedModifiers.Sprint["efth_speed_" .. id] = speed
+		CMovement.UpdateModifiers()
 	end;
 	
-	RemoveSpeed = function(id)
-		RemoveSpeed("efth_speed_" .. id)
+	RemoveSpeedSprint = function(id)
+		CMovement.SpeedModifiers.Sprint["efth_speed_" .. id] = nil
+		CMovement.UpdateModifiers()
 	end;
-
 }

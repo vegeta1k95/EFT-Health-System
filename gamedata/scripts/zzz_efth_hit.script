@@ -125,7 +125,7 @@ function GetNearestActorBoneID(npc)
 	end
 
 	local min_dist = 99
-	local picked_bone_id
+	local picked_bone_id = 0
 	
 	for bone_id, _ in pairs(BONE_TO_LIMB) do
 		local bone_name = db.actor:bone_name(bone_id)

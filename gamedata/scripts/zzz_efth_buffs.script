@@ -283,6 +283,9 @@ class "CBuff"
 	-- WARNING: This is to be overriden in inherited classes!
 	OnAdded = function(self) end;	
 	OnRemoved = function(self) end;
+	
+	-- This is called after loading
+	OnLoaded = function(self) end;
 
 }
 
@@ -542,6 +545,10 @@ class "CBuffConcussion" : extends {"CBuff", "CDurational"}
 		CDurational.__init(self, duration)
 	end;
 	
+	OnLoaded = function(self)
+		self:OnAdded()
+	end;
+	
 	OnAdded = function(self)
 
 		level.add_pp_effector("efth\\concussion.ppe", 99123, false)
@@ -672,6 +679,10 @@ class "CBuffBrokenLegDebuff" : extends "CBuff"
 	__init = function(self, tag, speed)
 		self.tag = tag
 		self.speed = speed or 1
+	end;
+	
+	OnLoaded = function(self)
+		self:OnAdded()
 	end;
 	
 	OnAdded = function(self)
@@ -866,12 +877,10 @@ class "CBuffConditionMax" : extends {"CBuff", "CDurational"}
 	end;
 	
 	OnAdded = function(self)
-		printf("Applied " .. self.condition .. " max buff " .. self.amount .. " for " .. self.duration/1000 .. " seconds" )
 		Body.conditions[self.condition]:AddMax(self.amount)
 	end;
 	
 	OnRemoved = function(self)
-		printf("Removed " .. self.condition .. " max buff " .. self.amount)
 		Body.conditions[self.condition]:AddMax(-self.amount)
 	end;
 }
