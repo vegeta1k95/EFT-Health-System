@@ -101,8 +101,10 @@ class "CLimb"
 	ApplyDamage = function(self, damage)
 		self:SetHP(self.hp - damage)
 		
-		-- +0.01 Vitality for every 5 points of damage taken
-		Body.skills.vitality:AddBase(damage / 5 * 0.01)
+		if (damage > 0) then
+			-- +0.01 Vitality for every 5 points of damage taken
+			Body.skills.vitality:AddBase(damage / 5 * 0.01)
+		end
 	end;
 	
 	ApplyHeal = function(self, heal)
