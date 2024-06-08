@@ -127,7 +127,7 @@ function GetNearestActorBoneID(npc)
 	local min_dist = 99
 	local picked_bone_id
 	
-	for bone_id, _ in pairs(hitboxes) do
+	for bone_id, _ in pairs(BONE_TO_LIMB) do
 		local bone_name = db.actor:bone_name(bone_id)
 		local bone_pos = bone_name and vector():set(db.actor:bone_position(bone_name))
 		local dist = bone_pos and head_bone_pos:distance_to(bone_pos)
