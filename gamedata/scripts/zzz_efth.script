@@ -6,7 +6,9 @@
 local class = zzz_efth_lua.class
 local enum = zzz_efth_lua.enum
 
-local CopyTable = zzz_efth_lua.CopyTable
+local Serialize = zzz_efth_lua.Serialize
+local Deserialize = zzz_efth_lua.Deserialize
+local PrintTable = zzz_efth_lua.PrintTable
 local ChooseRandom = zzz_efth_lua.ChooseRandom
 
 local GetConfig = zzz_efth_mcm.GetConfig
@@ -267,14 +269,14 @@ class "CBody"
 			limbs  = {},
 			buffs  = {},
 			skills = {},
-			conditions = {}
+			conditions = {},
 		}
 		
-		CopyTable(self.limbs, save.limbs)
-		CopyTable(self.buffs, save.buffs)
-		CopyTable(self.skills, save.skills)
-		CopyTable(self.conditions, save.conditions)
-	
+		Serialize(self.limbs, save.limbs)
+		Serialize(self.buffs, save.buffs)
+		Serialize(self.skills, save.skills)
+		Serialize(self.conditions, save.conditions)
+			
 		data.efth_body = save
 		
 	end;
@@ -286,10 +288,12 @@ class "CBody"
 	
 		-- Restore table data, if present
 		if (save) then
-			CopyTable(save.limbs, self.limbs)
-			CopyTable(save.buffs, self.buffs)
-			CopyTable(save.skills, self.skills)
-			CopyTable(save.conditions, self.conditions)
+		
+			Deserialize(save.limbs, self.limbs)
+			Deserialize(save.buffs, self.buffs)
+			Deserialize(save.skills, self.skills)
+			Deserialize(save.conditions, self.conditions)
+		
 		end
 		
 	end;
@@ -303,13 +307,12 @@ class "CBody"
 		-- Send callbacks about updating HP
 		for limb_name, limb in pairs(self.limbs) do
 			limb:OnHealthChanged()
-		end
+		end	
 		
-		-- Send callbacks about updating buffs
 		for buff_id, buff in pairs(self.buffs.active.queue) do
-			SendScriptCallback("efth_on_buff_added", buff)
+			buff:OnAdded()
 		end
-		
+	
 	end;
 		
 	-- Why. Won't. You. DIE!
@@ -784,7 +787,8 @@ end
 function OnKeyPressed(dik)
 	--[[
 	if dik == DIK_keys.DIK_H then
-		Body:ApplyDamage(Body.limbs.leg_left, 30, EHitTypes.Wound_2)
+		--Body:ApplyDamage(Body.limbs.leg_left, 30, EHitTypes.Wound_2)
+		Body.limbs.leg_left:AddBuff(CBuffFracture)
 		xr_sound.set_sound_play(db.actor:id(), "pda_tips")
 	elseif dik == DIK_keys.DIK_J then
 		Body:ApplyDamage(Body.limbs.arm_right, 30, EHitTypes.Wound_2)

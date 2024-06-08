@@ -13,7 +13,7 @@ function ClassCreate(name)
 	class.__classname = name			 -- Store class name
 	class.__class = class				 -- Store class reference for objects
     class.__init = function(self) end    -- Class default (empty) constructor
-
+	
     -- Class metatable
     local class_meta  = {
         
@@ -21,7 +21,7 @@ function ClassCreate(name)
         -- is just a creation of a new object
         __call = function(class, ...)
             local object = setmetatable({}, class)
-			object.__init(object, ...)
+			object.__init(object, ...)	-- Invoke constructor
             return object
         end
     }
@@ -119,20 +119,49 @@ function enum(name)
     return tbl
 end
 
--- ========================== HELPER ======================================
 
-function CopyTable(source, destination)
+-- ========================== Class serialization =========================
+
+function Serialize(source, destination)
+     
+    if (source.__classname) then
+        destination.__serialclass = source.__classname
+    end
+    
 	for key, value in pairs(source) do
 		if (type(value) == "table") then	
 		    if (destination[key] == nil) then
 	            destination[key] = {}
 	        end
-			CopyTable(value, destination[key])
+			Serialize(value, destination[key])
+		elseif (type(value) ~= "function") then
+			destination[key] = value
+		end
+    end
+end
+
+
+function Deserialize(source, destination)
+    
+    if (source.__serialclass) then
+        local meta = _G[source.__serialclass]
+        setmetatable(destination, meta)
+    end
+    
+    for key, value in pairs(source) do
+		if (type(value) == "table") then	
+		    if (destination[key] == nil) then
+	            destination[key] = {}
+	        end
+			Deserialize(value, destination[key])
 		elseif (type(value) ~= "function") then
 			destination[key] = value
 		end
 	end
 end
+
+
+-- ========================== HELPER ======================================
 
 
 function ChooseRandom(tbl)

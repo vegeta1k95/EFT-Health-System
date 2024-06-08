@@ -254,7 +254,7 @@ class "CDurational"
 
 -- Base class which represents a buff
 class "CBuff"
-{
+{	
 	-- Limb to which this buff is attached
 	LIMB = nil,
 	
@@ -782,12 +782,10 @@ class "CBuffSkill" : extends {"CBuff", "CDurational"}
 	end;
 	
 	OnAdded = function(self)
-		printf("Skill boost " .. self.skill .. " by " .. self.amount .. " applied")
 		Body.skills[self.skill]:AddBonus(self.amount)
 	end;
 	
 	OnRemoved = function(self)
-		printf("Skill boost " .. self.skill .. " by " .. self.amount .. " removed")
 		Body.skills[self.skill]:AddBonus(-self.amount)
 	end;
 	
