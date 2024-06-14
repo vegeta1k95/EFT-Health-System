@@ -1,0 +1,149 @@
+local class = aaa_efth_lua.class
+local enum = aaa_efth_lua.enum
+
+class "CEvent"
+{
+	__init = function(self, id, is_base)
+		self.id = id
+		self.is_base = is_base
+	end
+}
+
+enum "Events"
+{
+	-- ======================= Base events ===============================
+	-- Generic
+	Save					  = CEvent("save_state", true),
+	Load					  = CEvent("load_state", true),
+	KeyPress				  = CEvent("on_key_press", true),
+
+	-- Actor
+	Update					  = CEvent("actor_on_update", true),
+	FirstUpdate				  = CEvent("actor_on_first_update", true),
+	Footstep  	  	 	   	  = CEvent("actor_on_footstep", true),
+	Jump 	    	  	      = CEvent("actor_on_jump", true),
+	Sleep					  = CEvent("actor_on_sleep", true),
+	HUDAnimationPlay		  = CEvent("actor_on_hud_animation_play", true),
+	
+	OnWeaponZoomIn			  = CEvent("actor_on_weapon_zoom_in", true),
+	OnWeaponZoomOut			  = CEvent("actor_on_weapon_zoom_out", true),
+	
+	-- Items
+	ItemUse					  = CEvent("actor_on_item_use", true),
+	
+	-- Hits
+	OnBeforeNPCHit			  = CEvent("npc_on_before_hit", true),
+	OnBeforeMonsterHit		  = CEvent("monster_on_before_hit", true),
+	OnBeforeHitAfterCalcs	  = CEvent("on_before_hit_after_calcs", true),
+	
+	-- ======================= Derived events =============================
+	PlayerPreHitPostCalcs 	  = CEvent("event_player_pre_hit", false),
+	PlayerPreDamageMelee  	  = CEvent("event_player_pre_damage_melee", false),
+	
+	-- ======================= Custom events ==============================
+	PlayerHealthChanged		  = CEvent("event_player_health_changed", false),
+	
+	SkillChanged			  = CEvent("event_skill_changed", false),
+	
+	BuffAdded				  = CEvent("event_buff_added", false),
+	BuffRemoved				  = CEvent("event_buff_removed", false), 
+}
+
+class "CEventBus"
+{
+	__init = function(self)
+	
+		-- Create events map
+		self.subscribers = {}
+		
+		for name, event in pairs(Events) do
+			self.subscribers[event.id] = {}
+		end
+		
+	end;
+	
+	RegisterCallbacks = function(self)
+	
+		-- Register base events for vanilla callbacks
+		
+		for name, event in pairs(Events) do
+			if (event.is_base) then
+				RegisterScriptCallback(event.id, function(...)
+					self:Notify(event, ...)
+				end)
+			end
+		end
+		
+		-- ==============================================
+		
+		-- Derived events are derived from base events:
+		-- We subscribe to base event, check some conditions, 
+		-- and launch derived events based on those conditions.
+		
+		self:Subscribe(Events.OnBeforeHitAfterCalcs, function(hit, target, bone_id)
+			-- Player is hit
+			if (target:id() == db.actor:id()) then
+				self:Notify(Events.PlayerPreHitPostCalcs, hit, bone_id)
+			end
+		end)
+						
+		local PlayerDamageWeapon = function(target, hit, bone_id, flags)
+			
+			local is_target_alive = target:alive()
+			local is_actor_did = (hit.draftsman) and (hit.draftsman:id() == 0)
+			
+			local weapon = (hit.weapon_id) and (level.object_by_id(hit.weapon_id))
+			local weapon_section = (weapon) and (weapon:section())
+			local weapon_kind = (weapon_section) and (SYS_GetParam(0, weapon_section, "kind"))
+			
+			if (is_target_alive) and (is_actor_did) then
+				if (weapon_kind == "w_melee") then
+					self:Notify(Events.PlayerPreDamageMelee, target, hit, bone_id, flags)
+				end
+			end
+			
+		end
+		
+		self:Subscribe(Events.OnBeforeNPCHit, PlayerDamageWeapon)
+		self:Subscribe(Events.OnBeforeMonsterHit, PlayerDamageWeapon)
+		
+	end;
+	
+	-- =======================================================
+	
+	SubscribeMethod = function(self, object, method, event)
+		self:Subscribe(event, function(...)
+			method(object, ...)
+		end)
+	end;
+	
+	UnsubscribeMethod = function(self, cls, method, event)
+	
+	end;
+	
+	-- =======================================================
+	
+	Notify = function(self, event, ...)
+		for func, val in pairs(self.subscribers[event.id]) do
+			if (val) then
+				func(...)
+			end
+		end
+	end;
+	
+	Subscribe = function(self, event, func)
+		self.subscribers[event.id][func] = true
+	end;
+	
+	Unsubscribe = function(self, event, func)
+		self.subscribers[event.id][func] = nil
+	end;
+	
+}
+
+_G.EventBus = CEventBus()
+
+
+function on_game_start()
+	EventBus:RegisterCallbacks()
+end

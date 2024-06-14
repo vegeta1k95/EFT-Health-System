@@ -1,16 +1,37 @@
+local class = aaa_efth_lua.class
 local CValueAnimator = zzz_efth_utils.CValueAnimator
 
-VOLUME_ANIMATOR = CValueAnimator()
-VOLUME_ANIMATOR.OnValueChanged = function(value)
-	exec_console_cmd("snd_volume_eff " .. value)
-end
+class "CVolume"
+{
+	VOLUME = CValueAnimator();
+	
+	-- ============================================
+	
+	Get = function()
+		return get_console_cmd(2, "snd_volume_eff")
+	end;
+	
+	Set = function(value, interval)
+		CVolume.VOLUME:Set(value, interval)
+	end;
+	
+	SetRaw = function(value)
+		CVolume.VOLUME:SetRaw(value)
+	end;
+	
+	-- ============================================
+	
+	OnVolumeChanged = function(value)
+		exec_console_cmd("snd_volume_eff " .. value)
+	end;
+	
+	OnUpdate = function()
+		CVolume.VOLUME:Update(time_global())
+	end;
+}
 
-function ActorOnUpdate()
-	-- Continious update of decals
-	VOLUME_ANIMATOR:Update(time_global())
-end
-
+CVolume.VOLUME.OnValueChanged = CVolume.OnVolumeChanged
 
 function on_game_start()
-	RegisterScriptCallback("actor_on_update", ActorOnUpdate)
+	RegisterScriptCallback("actor_on_update", CVolume.OnUpdate)
 end

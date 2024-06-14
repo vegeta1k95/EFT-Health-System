@@ -1,0 +1,191 @@
+local class = aaa_efth_lua.class
+
+class "CHydration" 
+{
+	IS_ENABLED = false;
+	
+	HYDRATION = 1.0;
+	HYDRATION_TIMER = nil;
+	HYDRATION_INTERVAL = 6;		-- In-game seconds; IRL seconds = In-game / 6
+	HYDRATION_DELTA = -0.000166;
+	
+	PENALTY_TIMER = time_global();
+	PENALTY_POWER = -0.01;
+	PENALTY_HEALTH = 0.0; -- Vanilla: -0.0001 * 0.0008;
+	
+	-- ===========================================================
+	
+	Enable = function()
+		IS_ENABLED = true;
+		
+		RegisterScriptCallback("actor_on_update", CHydration.OnUpdate)
+		RegisterScriptCallback("actor_on_item_use", CHydration.OnItemUse)
+		RegisterScriptCallback("actor_on_sleep", CHydration.OnSleep)
+		
+		actor_status.add_indicator("Thirst", {
+			index 	   = 3,
+			typ 	   = "state",
+			functor    = {"actor_status_thirst", "get_water_deprivation", true},
+			icon 	   = "ui_inGame2_indicator_thirst",
+			background = "ui_inGame2_indicator_slot",
+			anim_icon  = false,
+			anim_bk    = false,
+		})
+		
+	end;
+	
+	Disable = function()
+		IS_ENABLED = false;
+		
+		UnregisterScriptCallback("actor_on_update", CHydration.OnUpdate)
+		UnregisterScriptCallback("actor_on_item_use", CHydration.OnItemUse)
+		UnregisterScriptCallback("actor_on_sleep", CHydration.OnSleep)
+		
+		alife_storage_manager.get_state().hydration = nil
+		actor_status.add_indicator("Thirst",nil)
+	end;
+	
+	Toggle = function(enabled)
+	
+		if (enabled) and (not CHydration.IS_ENABLED) then
+			CHydration.Enable()
+		elseif (not enabled) and (CHydration.IS_ENABLED) then
+			CHydration.Disable()
+		end
+		
+	end;
+	
+	-- ===========================================================
+	
+	Save = function(m_data)
+		if (USE_MARSHAL) and (CHydration.IS_ENABLED) then
+			m_data.hydration = {
+				hydration 		 = CHydration.HYDRATION,
+				hydration_timer  = utils_data.CTime_to_table(CHydration.HYDRATION),
+			}			
+		end
+	end;
+	
+	Load = function(m_data)
+		local hydration = m_data.hydration
+		if (hydration) then
+			CHydration.HYDRATION = hydration.hydration
+			CHydration.HYDRATION_TIMER = utils_data.CTime_from_table(hydration.hydration_timer)
+		end
+	end;
+	
+	-- ===========================================================
+	
+	Add = function(amount)
+		CHydration.HYDRATION = clamp(CHydration.HYDRATION + amount, 0, 1)
+	end;
+	
+	Get = function()
+		return CHydration.HYDRATION
+	end;
+	
+	GetDehydration = function(visual)
+		local hydration = CHydration.Get()
+		
+		if (visual) then 
+			if (hydration) >= 0.75 then return 0
+			elseif (hydration) >= 0.50 then return 1
+			elseif (hydration) >= 0.25 then return 2
+			elseif (hydration) >= 0.10 then return 3
+			else return 4
+			end
+		end
+		
+		return (1.0 - hydration)
+	end;
+	
+	UpdatePostEffects = function()
+		local hydration = CHydration.Get()
+		local pp_id = 39568
+		
+		if (hydration >= 0.50) then
+			level.remove_pp_effector(pp_id)
+		else
+			level.add_pp_effector("yantar_underground_psi.ppe", pp_id, false)
+			level.set_pp_effector_factor(pp_id, (0.50 - hydration) * 2)
+		end
+	end;
+	
+	-- ===========================================================
+	
+	OnUpdate = function()
+		
+		-- God mode console command enabled.
+		if (get_console_cmd(1,"g_god")) then
+			return true
+		end
+		
+		local hydration = CHydration.Get()
+		
+		-- Hydration below 50% starts to reduce stamina and health
+		if (hydration < 0.5) then
+			if (CHydration.PENALTY_TIMER < time_global()) then 
+				CHydration.PENALTY_TIMER = time_global() + 100
+				
+				-- Dehydration leads to penalty to stamina, and eventually to health
+				if (db.actor.power > 0) then
+					db.actor:change_power(CHydration.PENALTY_POWER * (0.5 - hydration))
+				else
+					db.actor:change_health(CHydration.PENALTY_HEALTH * (0.5 - hydration))
+				end
+			end
+		end
+		
+		local time_last = CHydration.HYDRATION_TIMER
+		local time_now = game.get_game_time()
+		
+		-- Is time to update hydration
+		if (time_last == nil) or 
+		   (time_now:diffSec(time_last) >= CHydration.HYDRATION_INTERVAL) 
+		then
+			CHydration.HYDRATION_TIMER = time_now
+			
+			local change = CHydration.HYDRATION_DELTA
+			
+			CHydration.Add(change)
+			CHydration.UpdatePostEffects()
+		end
+		
+	end;
+	
+	OnItemUse = function(item)
+		
+		local section = item:section()
+		local eat_thirstiness = (ini_sys:r_float_ex(section,"eat_thirstiness") or 0)
+		local change = -eat_thirstiness * 1000 / actor_status_thirst.start_blur_4
+
+		if (change) ~= 0 then
+			CHydration.Add(change)
+			CHydration.UpdatePostEffects()
+		end
+		
+	end;
+	
+	OnSleep = function(hours)
+		if (not db.actor:has_info("force_slp")) then
+			local change = (3600 / CHydration.HYDRATION_INTERVAL) * CHydration.HYDRATION_DELTA * hours
+			CHydration.Add(change)
+		end
+	end;
+		
+}
+
+actor_status_thirst.create = CHydration.Enable
+actor_status_thirst.destroy = CHydration.Disable
+actor_status_thirst.toggle_feature = CHydration.Toggle
+
+actor_status_thirst.test_blur = function() end
+actor_status_thirst.force_sleep = function() end
+
+actor_status_thirst.get_water_deprivation = CHydration.GetDehydration
+actor_status_thirst.actor_on_sleep = CHydration.OnSleep
+actor_status_thirst.actor_on_item_use = CHydration.OnItemUse
+actor_status_thirst.actor_on_update = CHydration.OnUpdate
+
+actor_status_thirst.save_state = CHydration.Save
+actor_status_thirst.load_state = CHydration.Load

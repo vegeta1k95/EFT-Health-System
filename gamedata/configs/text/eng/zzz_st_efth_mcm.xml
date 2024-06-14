@@ -6,6 +6,7 @@
 	
 	<string id="ui_mcm_efth_general_damage_multiplier"><text>Damage multiplier</text></string>
 	<string id="ui_mcm_efth_general_campfire_heal"><text>Healing from campfires</text></string>
+	<string id="ui_mcm_efth_general_impact_effect"><text>Injury camera effects</text></string>
 	
 	<string id="ui_mcm_efth_inv_bg_alpha"><text>Background Transparency</text></string>
 	<string id="ui_mcm_efth_inv_show_conditions"><text>Health/Thirst/Hunger Indicators</text></string>

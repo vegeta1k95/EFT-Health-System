@@ -3,13 +3,12 @@
 	AUTHOR: vegeta1k95
 --]]
 
-local class = zzz_efth_lua.class
-local enum = zzz_efth_lua.enum
+local class = aaa_efth_lua.class
+local enum = aaa_efth_lua.enum
 
-local Serialize = zzz_efth_lua.Serialize
-local Deserialize = zzz_efth_lua.Deserialize
-local PrintTable = zzz_efth_lua.PrintTable
-local ChooseRandom = zzz_efth_lua.ChooseRandom
+local Serialize = aaa_efth_lua.Serialize
+local Deserialize = aaa_efth_lua.Deserialize
+local ChooseRandom = aaa_efth_lua.ChooseRandom
 
 local GetConfig = zzz_efth_mcm.GetConfig
 
@@ -74,6 +73,7 @@ class "CLimb"
 	SetHP = function(self, value)
 		local old_hp = self.hp
 		local new_hp = clamp(value, 0, self.hp_max_current)
+		
 		if (self.hp ~= new_hp) then
 			self.hp = new_hp
 			
@@ -91,24 +91,30 @@ class "CLimb"
 			end
 			
 		end
+		
+		-- Return overflow damage (>0) / heal (<0)
+		if (value < 0) then
+			return (-value)
+		elseif (value > self.hp_max_current) then
+			return (self.hp_max_current - value)
+		else
+			return 0
+		end
+		
 	end;
 	
 	SetMaxHP = function(self, value)
-		self.hp_max_current = math.max(math.min(value, self.hp_max), 1)
+		self.hp_max_current = clamp(value, 1, self.hp_max)
+		self.hp = clamp(self.hp, 0, self.hp_max_current)
 		self:OnHealthChanged()
 	end;
 	
 	ApplyDamage = function(self, damage)
-		self:SetHP(self.hp - damage)
-		
-		if (damage > 0) then
-			-- +0.01 Vitality for every 5 points of damage taken
-			Body.skills.vitality:AddBase(damage / 5 * 0.01)
-		end
+		return self:SetHP(self.hp - damage)
 	end;
 	
 	ApplyHeal = function(self, heal)
-		self:SetHP(self.hp + heal)
+		return self:SetHP(self.hp + heal)
 	end;
 	
 	CanBeHealed = function(self)
@@ -167,9 +173,6 @@ class "CBody"
 		-- Update timer
 		self.last_update = time_global()
 		
-		-- If we aiming down the sight
-		self.is_ads = false
-		
 		-- Conditions
 		-- More details inside `zzz_efth_conditions.script`
 		self.conditions = {
@@ -184,13 +187,13 @@ class "CBody"
 		-- Skills 
 		-- More details inside `zzz_efth_skills.script`
 		self.skills = {
-			endurance 			= CSkillEndurance(),
-			health 				= CSkillHealth(),
-			immunity 			= CSkillImmunity(),
-			metabolism 			= CSkillMetabolism(),
-			strength 			= CSkillStrength(),
-			stress_resistance 	= CSkillStressResistance(),
-			vitality 			= CSkillVitality(),
+			endurance 			= CSkillEndurance("endurance"),
+			health 				= CSkillHealth("health"),
+			immunity 			= CSkillImmunity("immunity"),
+			metabolism 			= CSkillMetabolism("metabolism"),
+			strength 			= CSkillStrength("strength"),
+			stress_resistance 	= CSkillStressResistance("stress_resistance"),
+			vitality 			= CSkillVitality("vitality"),
 		}
 		
 		-- Buffs list
@@ -198,7 +201,7 @@ class "CBody"
 			
 		-- Body limbs
 		self.limbs = {
-			--					name		 HP  RED   VITAL  PENAL
+			--					name		 HP  RED   VITAL  FRACT
 			head 		= CLimb("head", 	 35, 0.00, true,  false),   -- Heal: vital, no penalties (death)
 			torso 		= CLimb("torso", 	 80, 0.00, true,  false),	-- Torso: vital, no penalties (death)
 			stomach 	= CLimb("stomach", 	 70, 1.05, false, false),	-- Stomach: non-vital, has penalties
@@ -242,6 +245,23 @@ class "CBody"
 		self.limbs.arm_right.penalty_on_apply = penalty_arm_apply
 		self.limbs.arm_right.penalty_on_remove = penalty_arm_remove
 		
+		-- Stomach
+		self.limbs.stomach.penalty_on_apply = function(limb) 
+			limb:AddBuff(CBuffBrokenStomach)
+		end
+		self.limbs.stomach.penalty_on_remove = function(limb)
+			limb:RemoveBuff(CBuffBrokenStomach)
+		end
+		
+		-- Register events
+		EventBus:SubscribeMethod(self, self.Save, Events.Save)
+		EventBus:SubscribeMethod(self, self.Load, Events.Load)
+		EventBus:SubscribeMethod(self, self.OnUpdate, Events.Update)
+		EventBus:SubscribeMethod(self, self.OnFirstUpdate, Events.FirstUpdate)
+		EventBus:SubscribeMethod(self, self.OnJump, Events.Jump)
+		EventBus:SubscribeMethod(self, self.OnSleep, Events.Sleep)
+		EventBus:SubscribeMethod(self, self.OnFootstep, Events.Footstep)
+		EventBus:SubscribeMethod(self, self.OnHUDAnimationPlay, Events.HUDAnimationPlay)		
 	end;
 	
 	-- ========================= BUFFS SECTION =========================
@@ -302,10 +322,7 @@ class "CBody"
 	
 	-- First update setup
 	OnFirstUpdate = function(self)
-	
-		-- Make actor invulnerable to default damage system
-		db.actor:set_can_be_harmed(false)
-		
+			
 		-- Send callbacks about updating HP
 		for limb_name, limb in pairs(self.limbs) do
 			limb:OnHealthChanged()
@@ -321,7 +338,7 @@ class "CBody"
 		
 	-- Why. Won't. You. DIE!
 	Die = function(self)
-		db.actor:set_health_ex(0)
+		db.actor:kill(db.actor, true)
 	end;
 	
 	-- ================================== DAMAGE LOGIC =====================================
@@ -338,8 +355,15 @@ class "CBody"
 	--]]
 	ApplyDamage = function(self, limb, damage, hit_type)
 		
-		-- No damage - skip
-		if (damage == 0) then
+		-- Skip if:
+		-- 1) No damage
+		-- 2) Enabled God Mode
+		-- 3) Disabled actor:can_be_harmed
+		
+		if (damage == 0) or 
+		   (get_console_cmd(1,"g_god")) or 
+		   (db.actor:can_be_harmed() == false)
+		then
 			return
 		end
 		
@@ -381,7 +405,14 @@ class "CBody"
 		
 		-- Above damage threshold generic hit applies short pain
 		if (damage > PAIN_DAMAGE_THRESHOLD) then
-			limb:AddBuff(CBuffPainTemporary, nil, PAIN_DURATION_DEFAULT)
+			
+			-- Stress Resistance skill reduces chance to obtain pain debuff
+			local chance = 1.0 - Body.skills.stress_resistance:GetPainReduceChance()
+			
+			if (math.random() <= chance) then
+				limb:AddBuff(CBuffPainTemporary, nil, PAIN_DURATION_DEFAULT)
+			end
+			
 		end
 		
 		-- If hit type allows - try to apply bleeding
@@ -397,10 +428,8 @@ class "CBody"
 			
 			-- NOTE: `prob_bleed` chance is influenced by your Vitality skill level!
 			
-			local prob_bleed = hit_type.prob_bleed * (1.0 - self.skills.vitality:GetBleedChanceReduce())
+			local prob_bleed = hit_type.prob_bleed * (1.0 - self.skills.vitality:GetBleedChanceModifier())
 			local is_temporary = self.skills.vitality:IsElite()
-			
-			printf("Bleed chance " .. prob_bleed .. " Temp " .. tostring(is_temporary))
 			
 			if (limb:HasBuff(CBuffFreshWound)) then
 				if (is_temporary) then
@@ -438,7 +467,7 @@ class "CBody"
 			
 			-- NOTE: `prob_fracture` chance is influenced by your Health skill level!
 			
-			local prob_fracture = hit_type.prob_fracture * (1.0 - self.skills.health:GetFractureChanceReduce())
+			local prob_fracture = hit_type.prob_fracture * (1.0 - self.skills.health:GetFractureModifier())
 			
 			if (damage > limb.hp_max_current * FRACTURE_PERCENT_MAXHP) and (math.random() < prob_fracture) then
 		
@@ -458,10 +487,7 @@ class "CBody"
 		then
 			Body:AddBuff(CBuffConcussion, nil, 7000)
 		end
-		
-		-- TODO: Move this out to `effects`
-		ImpactEffect(damage)
-		
+				
 	end;
 	
 	--[[
@@ -471,9 +497,17 @@ class "CBody"
 				 but, player WILL die if total body HP goes to 0!				 
 		NOTE:    Negative damage will result in heal!
 	--]]
-	ApplyBodyDamage = function(self, damage, is_percentile)
-		-- No damage - skip
-		if (damage == 0) then
+	ApplyBodyDamage = function(self, damage, is_percentile, apply_pain)
+	
+		-- Skip if:
+		-- 1) No damage
+		-- 2) Enabled God Mode
+		-- 3) Disabled actor:can_be_harmed
+		
+		if (damage == 0) or 
+		   (get_console_cmd(1,"g_god")) or 
+		   (db.actor:can_be_harmed() == false)
+		then
 			return
 		end
 		
@@ -489,12 +523,19 @@ class "CBody"
 					limb:ApplyDamage(damage)
 				end
 				
+				-- Above damage threshold generic hit applies short pain
+				if (apply_pain) and (damage > PAIN_DAMAGE_THRESHOLD) then
+					
+					-- Stress Resistance skill reduces chance to obtain pain debuff
+					local chance = 1.0 - Body.skills.stress_resistance:GetPainReduceChance()
+					
+					if (math.random() <= chance) then
+						limb:AddBuff(CBuffPainTemporary, nil, PAIN_DURATION_DEFAULT)
+					end
+					
+				end
+				
 			end
-		end
-		
-		-- We have no more health - dead!
-		if (self.conditions.health.hp == 0) then
-			self:Die()
 		end
 		
 	end;
@@ -577,6 +618,9 @@ class "CBody"
 	-- effects: bleedings, wounds, pain, painkillers, buffs, and so on.
 	-- Interval of update: 1 second = 1000 ms
 	OnUpdate = function(self)
+	
+		-- Syncronize vanilla HP with limbs HP
+		self.conditions.health:Sync()
 		
 		-- Time now
 		local time_now = time_global()
@@ -587,11 +631,11 @@ class "CBody"
 		-- Time for update has come (1 second)
 		if (time_since_update > 1000) then
 		
-			-- Update max HP of each limb
+			-- Update max HP of each limb,
+			-- if limb is restoring after surgery,
 			for name, limb in pairs(self.limbs) do
 				
-				-- If limb is restoring after surgery,
-				-- restore max limb's HP by 1 each minute (IRL).
+				-- Restore max limb's HP by 1 each minute (IRL).
 				if (limb.hp_max > limb.hp_max_current) and 
 				   (time_now - limb.hp_max_timer > 60000)
 				then
@@ -628,12 +672,12 @@ class "CBody"
 	OnSleep = function(self, hours)
 
 		-- All durational buffs wear off
-		for buff_id, buff in pairs(self.buffs.active) do
+		for buff_id, buff in pairs(self.buffs.active.queue) do
 			if (buff.IS_DURATIONAL) then
 				buff.duration = 0
 			end
 		end
-		for buff_id, buff in pairs(self.buffs.suspended) do
+		for buff_id, buff in pairs(self.buffs.suspended.queue) do
 			if (buff.IS_DURATIONAL) then
 				buff.duration = 0
 			end
@@ -660,14 +704,12 @@ class "CBody"
 	-- ================================== PENALTIES ========================================
 	
 	OnJump = function(self)
-	
 		-- Update jump-related effects
 		for buff_id, buff in pairs(self.buffs.active.queue) do	
 			if (buff.OnJump) then
 				buff:OnJump()
 			end
 		end
-		
 	end;
 	
 	OnFootstep = function(self, material, power, hud_view, flags)
@@ -693,76 +735,8 @@ class "CBody"
 			end
 		end
 		
-	end;
-	
-	OnWeaponZoom = function(self)
-		
-		-- Update zoom-related effects
-		for buff_id, buff in pairs(self.buffs.active.queue) do	
-			if (buff.OnWeaponZoom) then
-				buff:OnWeaponZoom()
-			end
-		end
-		
-	end;
-	
+	end;	
 }
-
-local impact_removed
-
-function ImpactEffect(damage)
-
-	local opt = actor_effects.opt
-
-	if (not opt.enable_hit_impact_effect) then
-		if (not impact_removed) then
-			impact_removed = true
-			level.remove_pp_effector(2011)
-			level.remove_pp_effector(2016)
-		end
-		return
-	end
-	impact_removed = false
-	
-	if (damage > 5) then
-		level.add_pp_effector(opt.health.little_ppe ,2011, false)
-		level.set_pp_effector_factor(2011, damage)
-	end
-	
-	local impact_snd
-	local impact_anm
-	
-	if (damage > 50) then
-		level.add_pp_effector(opt.health.huge_ppe, 2016, false)
-		level.set_pp_effector_factor(2016, damage)
-		impact_anm = opt.health.huge_anm
-		impact_snd = opt.health.huge_snd
-	elseif (damage > 20) then
-		impact_cam = opt.health.middle_anm
-		impact_snd = opt.health.middle_snd
-	end
-	
-	-- Play impact cam effect
-	if (impact_cam) and (#impact_cam > 0) then
-		level.add_cam_effector("camera_effects\\" .. impact_cam[math.random(#impact_cam)] .. ".anm", 999, false, "", 0, false)
-	end
-	
-	-- Play impact sound effect
-	if (impact_snd) and (#impact_snd > 0) then
-		local snd_obj = sound_object("actor\\" .. impact_snd[math.random(#impact_snd)])
-		snd_obj:play(db.actor, 0, sound_object.s2d)
-	end
-	
-	-- Drop player's active item
-	-- if (math.random() < damage) then
-	--	local active_item = db.actor:active_item()
-	--	if active_item and (not opt.health.no_drop_wnp[active_item:section()]) then
-	--		db.actor:drop_item(active_item)
-	--	end
-	-- end
-	
-end
-
 
 -- Override sleep dialog function, to prevent sleeping while bleeding.
 local originalUISleep = ui_sleep_dialog.UISleep.TestAndShow
@@ -791,62 +765,27 @@ end
 function OnKeyPressed(dik)
 	--[[
 	if dik == DIK_keys.DIK_H then
-		Body:ApplyDamage(Body.limbs.leg_right, 40, EHitTypes.Fall)
+		Body:AddBuff(CBuffTremor, "test")
 		xr_sound.set_sound_play(db.actor:id(), "pda_tips")
 	elseif dik == DIK_keys.DIK_J then
-		
+		Body:RemoveBuff(CBuffTremor, "test")
 		xr_sound.set_sound_play(db.actor:id(), "pda_tips")
 	end
 	--]]
 end
 
-function ActorOnFirstUpdate()
-	Body:OnFirstUpdate()
-end 
-
-function ActorOnUpdate()
-	Body:OnUpdate()
-end
-
-function ActorOnFootstep(material, power, hud_view, flags)
-	Body:OnFootstep(material, power, hud_view, flags)
-end
-
-function ActorOnJump()
-	Body:OnJump()
-end
-
-function ActorOnSleep(hours)
-	Body:OnSleep(hours)
-end
-
-function ActorOnHUDAnimationPlay(anm_table, obj)
-	Body:OnHUDAnimationPlay(anm_table, obj)	
-end
-
-function ActorOnWeaponZoomIn()
-	Body.is_ads = true
-	Body:OnWeaponZoom()
-end
-
-function ActorOnWeaponZoomOut()
-	Body.is_ads = false
-	Body:OnWeaponZoom()
-end
-
-function OnSaveState(data)
-	Body:Save(data)
-end
-
-function OnLoadState(data)
-	Body:Load(data)
+function ActorOnNetDestroy()
+	-- Restore FOV if we load/quit game during "Berserk" buff
+	if (CBuffBerserk.ACTIVE > 0) then
+		exec_console_cmd("fov " .. Body.buffs.active.queue["CBuffBerserk"].fov)
+	end
 end
 
 function on_game_start()
 
 	-- Main instance
 	_G.Body = CBody()
-
+	
 	AddScriptCallback("efth_on_health_changed")
 	AddScriptCallback("efth_on_penalties_changed")
 	
@@ -854,18 +793,6 @@ function on_game_start()
 	AddScriptCallback("efth_on_buff_removed")
 	AddScriptCallback("efth_on_buff_expiring")
 	
-	RegisterScriptCallback("on_key_press", OnKeyPressed)
-	
-	RegisterScriptCallback("actor_on_update", ActorOnUpdate)
-	RegisterScriptCallback("actor_on_first_update", ActorOnFirstUpdate)
-	RegisterScriptCallback("actor_on_footstep", ActorOnFootstep)
-	RegisterScriptCallback("actor_on_jump", ActorOnJump)
-	RegisterScriptCallback("actor_on_sleep", ActorOnSleep)
-	RegisterScriptCallback("actor_on_hud_animation_play", ActorOnHUDAnimationPlay)
-	RegisterScriptCallback("actor_on_weapon_zoom_in", ActorOnWeaponZoomIn) 		
-	RegisterScriptCallback("actor_on_weapon_zoom_out", ActorOnWeaponZoomOut)
-		
-	RegisterScriptCallback("save_state", OnSaveState)
-	RegisterScriptCallback("load_state", OnLoadState)
-
+	RegisterScriptCallback("on_key_press", OnKeyPressed)	
+	RegisterScriptCallback("actor_on_net_destroy", ActorOnNetDestroy)
 end

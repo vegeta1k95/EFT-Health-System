@@ -46,6 +46,7 @@
 		<texture id="ui_efth_hud_effect_buff"			x="53"  y="1"	width="24"  height="22"/>
 		<texture id="ui_efth_hud_effect_debuff"			x="79" 	y="1"	width="24"  height="22"/>
 		<texture id="ui_efth_hud_effect_concussion"		x="1"	y="1"	width="24"  height="22"/>
+		<texture id="ui_efth_hud_effect_berserk"		x="27"	y="1"	width="24"  height="22"/>
 	</file>
 	
 	<file name="ui\ui_efth_vignette_blood">

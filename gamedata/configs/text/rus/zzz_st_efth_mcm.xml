@@ -6,6 +6,7 @@
 	
 	<string id="ui_mcm_efth_general_damage_multiplier"><text>Множитель урона</text></string>
 	<string id="ui_mcm_efth_general_campfire_heal"><text>Лечение от костров</text></string>
+	<string id="ui_mcm_efth_general_impact_effect"><text>Эффекты камеры при ранении</text></string>
 	
 	<string id="ui_mcm_efth_inv_bg_alpha"><text>Прозрачность фона</text></string>
 	<string id="ui_mcm_efth_inv_show_conditions"><text>Показатели здоровья/жажды/голода</text></string>

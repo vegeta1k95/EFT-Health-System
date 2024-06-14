@@ -1,35 +1,89 @@
-local class = zzz_efth_lua.class
+local class = aaa_efth_lua.class
 	
--- Base on Arti's `speed.script`
+-- Based on Arti's `speed.script`
 
 class "CMovement"
 {
+	-- Init flag
+	INITIALIZED = false,
 	
+	-- Walking / running
 	DEFAULT_MOD_RUN 	= 0,
 	DEFAULT_MOD_RUNBACK = 0,
 	DEFAULT_MOD_SPRINT	= 0,
 	
-	INITIALIZED = false,
+	-- Jumping
+	DEFAULT_MOD_JUMP	= 0,
 	
+	-- Sprint block counter:
+	SprintBlocks = 0,
+	
+	-- Modifiers: Speed
 	SpeedModifiers = {
 		Run    = {},
 		Sprint = {},
 	},
 	
+	-- Modifiers: Jump
+	JumpModifiers = {},
+	
+	-- ============================= Init =====================================
+	
 	Initialize = function()
-		CMovement.DEFAULT_MOD_RUN = db.actor:get_actor_run_coef()
-		CMovement.DEFAULT_MOD_RUNBACK = db.actor:get_actor_runback_coef()
-		CMovement.DEFAULT_MOD_SPRINT = db.actor:get_actor_sprint_koef()
-
-		CMovement.INITIALIZED = true
+		if (CMovement.INITIALIZED == false) then
+			CMovement.INITIALIZED = true
+	
+			CMovement.SpeedModifiers.Run = {}
+			CMovement.SpeedModifiers.Sprint = {}
+		
+			CMovement.DEFAULT_MOD_RUN = db.actor:get_actor_run_coef()
+			CMovement.DEFAULT_MOD_RUNBACK = db.actor:get_actor_runback_coef()
+			CMovement.DEFAULT_MOD_SPRINT = db.actor:get_actor_sprint_koef()
+			
+			CMovement.DEFAULT_MOD_JUMP = db.actor:get_actor_jump_speed()
+		end
 	end;
 	
-	UpdateModifiers = function()
-		
-		-- Initialized if not yet
-		if (CMovement.INITIALIZED == false) then
-			CMovement.Initialize()
+	-- ========================== Save / Load ==================================
+	
+	OnSave = function(m_data)
+		local save = {
+			mod_speed	  = CMovement.SpeedModifiers,
+			mod_jump 	  = CMovement.JumpModifiers,
+			sprint_blocks = CMovement.SprintBlocks,
+		}
+		m_data.efth_movement = save
+	end;
+	
+	OnLoad = function(m_data)
+		local save = m_data.efth_movement
+	
+		if (save) then
+			CMovement.SpeedModifiers = save.mod_speed
+			CMovement.JumpModifiers = save.mod_jump
+			CMovement.SprintBlocks = save.sprint_blocks
 		end
+	end;
+	
+	OnFirstUpdate = function()
+		CMovement.Initialize()
+		
+		-- Restore modifiers
+		CMovement.UpdateModifiersSpeed()
+		CMovement.UpdateModifiersJump()
+		
+		-- Restore sprint blocks
+		local blocks = CMovement.SprintBlocks
+		CMovement.SprintBlocks = 0
+		for i = 1, blocks do
+			CMovement.DisableSprint()
+		end
+		
+	end;
+	
+	-- =========================================================================
+	
+	UpdateModifiersSpeed = function()
 		
 		-- Speed modifiers
 		local mod_run = 1
@@ -44,8 +98,6 @@ class "CMovement"
 			mod_sprint = mod_sprint * mod
 		end
 		
-		printf("SPEEDS MOD " .. mod_run)
-		
 		-- Clamp modifiers
 		local coeff_run 	= clamp(CMovement.DEFAULT_MOD_RUN * mod_run, 1, 10)
 		local coeff_runback = clamp(CMovement.DEFAULT_MOD_RUNBACK * mod_run, 1, 10)
@@ -58,36 +110,76 @@ class "CMovement"
 		
 	end;
 	
-	-- ======================= RUN / RUNBACK =======================
+	UpdateModifiersJump = function()
+		
+		-- Jump modifier
+		local mod_jump = 1
+		
+		-- Accumulate modifier
+		for key, mod in pairs(CMovement.JumpModifiers) do
+			mod_jump = mod_jump * mod
+		end
+		
+		-- Clamp modifier
+		local coeff_jump = clamp(CMovement.DEFAULT_MOD_JUMP * mod_jump, 0, 10)
+		
+		-- Set modifier
+		db.actor:set_actor_jump_speed(coeff_jump)
+	end;
+	
+	-- ======================= RUNNING =============================
 		
 	AddSpeed = function(id, speed)
+		CMovement.Initialize()
 		CMovement.SpeedModifiers.Run["efth_speed_" .. id] = speed
-		CMovement.UpdateModifiers()
+		CMovement.UpdateModifiersSpeed()
 	end;
 	
 	RemoveSpeed = function(id)
+		CMovement.Initialize()
 		CMovement.SpeedModifiers.Run["efth_speed_" .. id] = nil
-		CMovement.UpdateModifiers()
+		CMovement.UpdateModifiersSpeed()
 	end;
-	
 	
 	-- ======================= SPRINT ===============================
 	
 	EnableSprint = function()
 		db.actor:allow_sprint(true)
+		CMovement.SprintBlocks = math.max(CMovement.SprintBlocks - 1, 0)
 	end;
 	
 	DisableSprint = function()
 		db.actor:allow_sprint(false)
+		CMovement.SprintBlocks = CMovement.SprintBlocks + 1
 	end;
 	
 	AddSpeedSprint = function(id, speed)
+		CMovement.Initialize()
 		CMovement.SpeedModifiers.Sprint["efth_speed_" .. id] = speed
-		CMovement.UpdateModifiers()
+		CMovement.UpdateModifiersSpeed()
 	end;
 	
 	RemoveSpeedSprint = function(id)
+		CMovement.Initialize()
 		CMovement.SpeedModifiers.Sprint["efth_speed_" .. id] = nil
-		CMovement.UpdateModifiers()
+		CMovement.UpdateModifiersSpeed()
+	end;
+	
+	-- ======================== JUMP =================================
+	
+	AddSpeedJump = function(id, speed)
+		CMovement.Initialize()
+		CMovement.JumpModifiers["efth_jump_" .. id] = speed
+		CMovement.UpdateModifiersJump()
+	end;
+	
+	RemoveSpeedJump = function(id)
+		CMovement.Initialize()
+		CMovement.JumpModifiers["efth_jump_" .. id] = nil
+		CMovement.UpdateModifiersJump()
 	end;
 }
+
+EventBus:Subscribe(Events.Save, CMovement.OnSave)
+EventBus:Subscribe(Events.Load, CMovement.OnLoad)
+EventBus:Subscribe(Events.FirstUpdate, CMovement.OnFirstUpdate)

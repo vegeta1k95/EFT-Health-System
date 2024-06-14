@@ -1,4 +1,4 @@
-local class = zzz_efth_lua.class
+local class = aaa_efth_lua.class
 
 -- ============================= DISPLAY STUFF =================================
 
@@ -156,6 +156,7 @@ class "CUIEffectsList"
 			buff		= CUIEffect(9,  "buff",		  	self.background, xml, true),
 			debuff		= CUIEffect(10, "debuff",	  	self.background, xml, true),
 			concussion	= CUIEffect(11, "concussion",   self.background, xml, true),
+			berserk		= CUIEffect(12, "berserk", 	    self.background, xml, true),
 		}
 		
 		-- Limb specific list can only have 1 of each effects

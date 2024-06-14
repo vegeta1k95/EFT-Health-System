@@ -194,26 +194,3 @@ function spairs(t, order)
         end
     end
 end
-
--- ========================== DEBUG =======================================
-
-function PrintTable(t, ind)
-
-	local indent = ind or 0
-	local indent_brackets = string.rep(" ", indent)
-	local indent_content = string.rep(" ", indent + 4)
-	
-	printf(indent_brackets .. "{")
-	
-	for key, value in pairs(t) do
-		if (type(value) == "table") then
-			printf(indent_content .. tostring(key) .. " = ")
-			PrintTable(value, indent + 8)
-		else
-			printf(indent_content .. tostring(key) .. " = " .. tostring(value))
-		end
-	end
-	
-	printf(indent_brackets .. "}")
-	
-end

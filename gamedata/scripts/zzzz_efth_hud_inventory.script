@@ -8,7 +8,7 @@ local GetConfig = zzz_efth_mcm.GetConfig
 local CValueAnimator = zzz_efth_utils.CValueAnimator
 
 local ClassUI = class
-local class = zzz_efth_lua.class
+local class = aaa_efth_lua.class
 
 -- Main inventory HUD instance
 HUD = nil
@@ -156,9 +156,13 @@ class "CUILimb"
 		
 	end;
 	
-	SetHP = function(self, hp, hp_max)
+	SetHP = function(self, hp, hp_max, animate)
 		self.hp_max = hp_max
-		self.hp:Set(hp, 300)
+		if (animate) then
+			self.hp:Set(hp, 300)
+		else
+			self.hp:SetRaw(hp)
+		end
 	end;
 
 }
@@ -235,7 +239,7 @@ class "CUICondition"
 	Update = function(self)
 		local condition = Body.conditions[self.name]
 		self:SetValue(math.ceil(condition:Get()), condition:GetMax())
-		self:SetRate(condition:GetRegenRate())
+		self:SetRate(condition:GetRate())
 	end;
 }
 
@@ -287,24 +291,27 @@ function CUIBodyInventory:__init() super()
 	-- Load all the actual info
 	self:OnLoaded()
 	
-	-- Register callbacks
-	RegisterScriptCallback("ActorMenu_on_item_focus_receive", function(item) self:OnItemFocusReceive(item) end)
-	RegisterScriptCallback("ActorMenu_on_item_focus_lost", function(item) self:OnItemFocusLost(item) end)
+	self.callbacks = {
+		ActorMenu_on_item_focus_receive = function(item) self:OnItemFocusReceive(item) end,
+		ActorMenu_on_item_focus_lost    = function(item) self:OnItemFocusLost(item) end,
+		
+		efth_on_health_changed = function(limb) self:OnHealthChanged(limb, false) end,
+		efth_on_buff_added     = function(buff) self:OnBuffChanged(buff, true) end,
+		efth_on_buff_removed   = function(buff) self:OnBuffChanged(buff, false) end,
+		efth_on_buff_expiring  = function(buff) self:OnBuffExpiring(buff) end,
+	}
 	
-	RegisterScriptCallback("efth_on_health_changed", function(limb) self:OnHealthChanged(limb) end)
-	RegisterScriptCallback("efth_on_buff_added", function(buff) self:OnBuffChanged(buff, true) end)
-	RegisterScriptCallback("efth_on_buff_removed", function(buff) self:OnBuffChanged(buff, false) end)
-	RegisterScriptCallback("efth_on_buff_expiring", function(buff) self:OnBuffExpiring(buff) end)
+	-- Register callbacks
+	for cb, func in pairs(self.callbacks) do
+		RegisterScriptCallback(cb, func)
+	end
 end
 
 function CUIBodyInventory:__finalize()
-	UnregisterScriptCallback("efth_on_health_changed")
-	UnregisterScriptCallback("efth_on_buff_added")
-	UnregisterScriptCallback("efth_on_buff_removed")
-	UnregisterScriptCallback("efth_on_buff_expiring")
-	
-	UnregisterScriptCallback("ActorMenu_on_item_focus_receive")
-	UnregisterScriptCallback("ActorMenu_on_item_focus_lost")
+	-- Unregister callbacks
+	for cb, func in pairs(self.callbacks) do
+		UnregisterScriptCallback(cb, func)
+	end
 end
 
 function CUIBodyInventory:InitControls()
@@ -353,7 +360,7 @@ function CUIBodyInventory:OnLoaded()
 
 	-- Update each limb's HP
 	for limb_name, limb in pairs(Body.limbs) do
-		self:OnHealthChanged(limb)
+		self:OnHealthChanged(limb, true)
 	end
 	
 	-- Update total HP
@@ -386,8 +393,8 @@ function CUIBodyInventory:OnLoaded()
 	
 end
 
-function CUIBodyInventory:OnHealthChanged(limb)
-	self.limbs[limb.name]:SetHP(limb.hp, limb.hp_max_current)
+function CUIBodyInventory:OnHealthChanged(limb, animate)
+	self.limbs[limb.name]:SetHP(limb.hp, limb.hp_max_current, animate)
 	if (self.conditions) then
 		self.conditions.health:Update()
 	end

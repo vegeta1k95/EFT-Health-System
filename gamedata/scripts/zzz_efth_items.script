@@ -1,5 +1,5 @@
-local class = zzz_efth_lua.class
-local enum = zzz_efth_lua.enum
+local class = aaa_efth_lua.class
+local enum = aaa_efth_lua.enum
 
 --[[
 	REFERENCE: https://escapefromtarkov.fandom.com/wiki/Medical
@@ -59,8 +59,9 @@ function CacheItemSection(section)
 		item[prefix_duration] 		   = SYS_GetParam(2, section, "efth_" .. prefix_duration, 0) * 1000
 		item[prefix_amount]	  		   = SYS_GetParam(2, section, "efth_" .. prefix_amount, 0)
 		
-		item[condition_name]  		   = SYS_GetParam(2, section, "efth_" .. condition_name, 0)
-		item[condition_name .. "_max"] = SYS_GetParam(2, section, "efth_" .. condition_name .. "_max", 0)
+		item[condition_name]  		   			= SYS_GetParam(2, section, "efth_" .. condition_name, 0)
+		item[condition_name .. "_max"] 			= SYS_GetParam(2, section, "efth_" .. condition_name .. "_max", 0)
+		item[condition_name .. "_max_duration"] = SYS_GetParam(2, section, "efth_" .. condition_name .. "_max_duration", 0) * 1000
 		
 	end
 
@@ -111,9 +112,9 @@ end
 
 class "CItem"
 {
-	__init = function(self, item)
+	__init = function(self, item, section)
 		self.item = item
-		self.section = (item) and (item:section())
+		self.section = (section) or (item and item:section())
 		self.cache = (self.section) and (ITEMS_CACHE[self.section])
 				
 		self.is_limb_specific = SYS_GetParam(1, self.section, "efth_limb_specific", false)
@@ -131,7 +132,7 @@ class "CItem"
 	UseBooster = function(self)
 			
 		if (self.cache.remove_pain > 0) then 
-			Body:AddBuff(CBuffPainkiller, self.section, self.cache.remove_pain) 
+			Body:AddBuff(CBuffPainkiller, self.section, duration) 
 		end
 		if (self.cache.remove_concussion > 0) then 
 			Body:AddBuff(CBuffConcussionHeal, self.section, self.cache.remove_concussion) 
@@ -139,11 +140,28 @@ class "CItem"
 		if (self.cache.remove_bleed > 0) then 
 			Body:AddBuff(CBuffHemostatic, self.section, self.cache.remove_bleed) 
 		end
-		if (self.cache.apply_tremor_duration > 0) then 
-			Body:AddBuffDelayed(self.cache.apply_tremor_delay, CBuffTremorTemporary, self.section, self.cache.apply_tremor_duration) 
+		if (self.cache.apply_tremor_duration > 0) then
+			
+			-- Metabolism reduces duration of negative effects
+			local duration = self.cache.apply_tremor_duration * (1.0 - Body.skills.metabolism:GetModifier())
+			
+			-- Elite Immunity has a chance to not apply debuffs
+			if (Body.skills.immunity:IsElite() == false) or 
+			   (Body.skills.immunity:GetChanceToDebuff() >= math.random()) 
+			then
+				Body:AddBuffDelayed(self.cache.apply_tremor_delay, CBuffTremorTemporary, self.section, duration) 
+			end
 		end
-		if (self.cache.apply_concussion_duration > 0) then 
-			Body:AddBuffDelayed(self.cache.apply_concussion_delay, CBuffConcussion, self.section, self.cache.apply_concussion_duration) 
+		if (self.cache.apply_concussion_duration > 0) then
+			-- Metabolism reduces duration of negative effects
+			local duration = self.cache.apply_concussion_duration * (1.0 - Body.skills.metabolism:GetModifier())
+			
+			-- Elite Immunity has a chance to not apply debuffs
+			if (Body.skills.immunity:IsElite() == false) or 
+			   (Body.skills.immunity:GetChanceToDebuff() >= math.random()) 
+			then
+				Body:AddBuffDelayed(self.cache.apply_concussion_delay, CBuffConcussion, self.section, duration) 
+			end
 		end
 		
 		-- Apply skills buffs
@@ -154,7 +172,22 @@ class "CItem"
 			local skill_amount   = self.cache["skill_" .. skill .. "_amount"]
 			
 			if (skill_amount ~= 0) then
-				Body:AddBuffDelayed(skill_delay, CBuffSkill, self.section .. "_" .. skill, skill, skill_amount, skill_duration)
+				
+				-- Metabolism reduces duration of negative effects
+				-- Immunity reduces amount of negative effects
+				if (skill_amount < 0) then
+					skill_duration = skill_duration * (1.0 - Body.skills.metabolism:GetModifier())
+					skill_amount = skill_amount * (1.0 - Body.skills.immunity:GetDebuffModifier())
+				end
+			
+				-- Elite Immunity has a chance to not apply debuffs
+				if (skill_amount > 0) or
+				   (Body.skills.immunity:IsElite() == false) or 
+				   (Body.skills.immunity:GetChanceToDebuff() >= math.random()) 
+				then
+					Body:AddBuffDelayed(skill_delay, CBuffSkill, self.section .. "_" .. skill, skill, skill_amount, skill_duration)
+				end
+				
 			end
 			
 		end
@@ -171,11 +204,37 @@ class "CItem"
 			local flat_amount_max_duration = self.cache[condition_name .. "_max_duration"]
 			
 			if (flat_amount_max ~= 0) then
-				Body:AddBuffDelayed(1000, CBuffConditionMax, buff_id, condition_name, flat_amount_max, flat_amount_max_duration)
+			
+				-- Metabolism reduces duration of negative effects
+				-- Immunity reduces amount of negative effects
+				if (flat_amount_max < 0) then
+					flat_amount_max = flat_amount_max * (1.0 - Body.skills.immunity:GetDebuffModifier())
+					flat_amount_max_duration = flat_amount_max_duration * (1.0 - Body.skills.metabolism:GetModifier())
+				end
+				
+				if (flat_amount_max > 0) or
+				   (Body.skills.immunity:IsElite() == false) or 
+				   (Body.skills.immunity:GetChanceToDebuff() >= math.random()) 
+				then
+					Body:AddBuffDelayed(1000, CBuffConditionMax, buff_id, condition_name, flat_amount_max, flat_amount_max_duration)
+				end
+				
 			end
 			
 			if (flat_amount ~= 0) then
-				condition:Add(flat_amount)
+				
+				-- Immunity reduces amount of negative effects
+				if (flat_amount < 0) then
+					flat_amount = flat_amount * (1.0 - Body.skills.immunity:GetDebuffModifier())
+				end
+				
+				if (flat_amount > 0) or
+				   (Body.skills.immunity:IsElite() == false) or 
+				   (Body.skills.immunity:GetChanceToDebuff() >= math.random()) 
+				then
+					condition:Add(flat_amount)
+				end
+				
 			end
 			
 			-- Regen (per second) buffs
@@ -184,7 +243,19 @@ class "CItem"
 			local regen_amount 	 = self.cache[condition_name .. "_per_second_amount"]
 			
 			if (regen_amount ~= 0) then
-				Body:AddBuffDelayed(regen_delay, CBuffConditionRegen, buff_id, condition_name, regen_amount, regen_duration)
+				
+				-- Metabolism reduces duration of negative effects
+				if (regen_amount < 0) then
+					regen_amount = regen_amount * (1.0 - Body.skills.immunity:GetDebuffModifier())
+					regen_duration = regen_duration * (1.0 - Body.skills.metabolism:GetModifier())
+				end
+				
+				if (regen_amount > 0) or
+				   (Body.skills.immunity:IsElite() == false) or 
+				   (Body.skills.immunity:GetChanceToDebuff() >= math.random()) 
+				then
+					Body:AddBuffDelayed(regen_delay, CBuffConditionRegen, buff_id, condition_name, regen_amount, regen_duration)
+				end
 			end
 			
 		end
@@ -379,31 +450,6 @@ class "CItem"
 	
 	end;
 	
-	UseDefault = function(self)
-	
-		local eat_health = SYS_GetParam(2, self.section, "eat_health", 0)
-		
-		if (eat_health ~= 0) then
-			local amount = eat_health * Body.conditions.health.hp_max
-			Body.conditions.health:Add(amount)
-		end
-		
-		-- Time of boost in IRL seconds
-		local boost_time = SYS_GetParam(2, self.section, "boost_time", 0)
-		
-		-- Speed of boost in IRL seconds
-		local boost_health = SYS_GetParam(2, self.section, "boost_health_restore", 0) * 6
-		
-		if (boost_health ~= 0) and (boost_time > 0) then
-		
-			local amount_per_sec = boost_health * Body.conditions.health.hp_max		
-			local buff_id = self.section .. "_health"
-			
-			Body:AddBuffDelayed(1000, CBuffConditionRegen, buff_id, "health", amount_per_sec, boost_time * 1000)
-		end
-		
-	end;
-	
 	OnItemUse = function(self)
 		
 		-- Check if limb-specific		
@@ -419,8 +465,6 @@ class "CItem"
 		if (self.is_booster) then
 			self:UseBooster()
 		end
-		
-		self:UseDefault()
 		
 	end;
 	

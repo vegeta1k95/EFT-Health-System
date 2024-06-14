@@ -1,0 +1,19 @@
+local class = aaa_efth_lua.class
+
+class "CAiming"
+{
+	is_ads = false;
+	
+	-- TODO: Weapon sway + hold breath
+	
+	OnWeaponZoomIn = function()
+		CAiming.is_ads = true
+	end;
+	
+	OnWeaponZoomOut = function()
+		CAiming.is_ads = false
+	end;
+}
+
+EventBus:Subscribe(Events.OnWeaponZoomIn, CAiming.OnWeaponZoomIn)
+EventBus:Subscribe(Events.OnWeaponZoomOut, CAiming.OnWeaponZoomOut)

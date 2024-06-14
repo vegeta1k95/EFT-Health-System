@@ -1,4 +1,5 @@
-local class = zzz_efth_lua.class
+local class = aaa_efth_lua.class
+local min = math.min
 
 -- ============================= CONDITIONS ====================================
 
@@ -12,50 +13,74 @@ local class = zzz_efth_lua.class
 --]]
 class "CCondition"
 {
-	__init = function(self)
-		self.regen = 0
-	end;
+	-- OVERRIDE
+	__init = function(self) end;
+	Update = function(self, time_passed) end;
+	Sync = function(self) end;
 	
-	Update = function(self, time_passed)
-		if (self.regen ~= 0) then
-			self:Add(self.regen * time_passed / 1000)
-		end
-	end;
+	-- OVERRIDE
+	Add = function(self, value) end;
+	Get = function(self) return 0 end;
+	GetRate = function(self) return 0 end;
+		
+	-- OVERRIDE
+	AddMax = function(self, value) end;
+	GetMax = function(self) return 0 end;
 	
-	GetRegenRate = function(self)
-		-- TO OVERRIDE
-	end;
-	
-	Add = function(self, value) 
-		-- TO OVERRIDE
-	end;
-	
-	AddRegen = function(self, value)
-		self.regen = self.regen + value
-	end;
-	
-	AddMax = function(self, value)
-		-- TO OVERRIDE (TODO)
-	end;
-	
-	Get = function(self)
-		-- TO OVERRIDE
-	end;
-	
-	GetMax = function(self)
-		-- TO OVERRIDE
-	end;
 }
+
+-- ================================ Energy ===================================
 
 class "CConditionEnergy" : extends "CCondition"
 {
-	__init = function(self)
-		CCondition.__init(self)
-		
+	__init = function(self)		
 		self.satiety_rate = -SYS_GetParam(2, "actor_condition", "satiety_v", 0) * 6
 		self.satiety_min = SYS_GetParam(2, "actor_condition", "satiety_critical", 0.2) * 0.5
 		self.satiety_max = 1.0
 		self.satiety_per_percent = (self.satiety_max - self.satiety_min) / 100	
+	end;
+
+-- private:	
+	
+	__GetRateVanilla = function(self)
+		return (self.satiety_rate / self.satiety_per_percent) * (1.0 - Body.skills.health:GetConsumptionRateModifier())
+	end;
+	
+	__GetRateEFTH = function(self)
+		local rate = 0
+		
+		for name, buff in pairs(Body.buffs.active.queue) do
+			-- Account regen buffs
+			if (buff.condition == "energy") then
+				rate = rate + buff.amount
+			end
+		end
+		
+		if (CBuffBrokenStomach.ACTIVE > 0) then
+			rate = rate + self:__GetRateVanilla() * CBuffBrokenStomach.MULTIPLIER
+		end
+		
+		return rate
+	end;
+	
+-- public:
+
+	Update = function(self, time_passed)		
+		if (self:Get() == 0) and
+		   (not Body.skills.metabolism:IsElite()) 
+		then
+			Body:AddBuff(CBuffHunger)
+		else
+			Body:RemoveBuff(CBuffHunger)
+		end
+	end;
+	
+	-- =====================================
+	
+	Add = function(self, value)
+		local conditions = db.actor:cast_Actor():conditions()
+		local satiety = conditions:GetSatiety()
+		db.actor.satiety = clamp(satiety + value * self.satiety_per_percent, self.satiety_min, self.satiety_max)
 	end;
 		
 	Get = function(self)
@@ -65,98 +90,122 @@ class "CConditionEnergy" : extends "CCondition"
 		return energy
 	end;
 	
+	GetRate = function(self)
+		local rate = 0
+		
+		rate = rate + self:__GetRateVanilla()
+		rate = rate + self:__GetRateEFTH()
+		
+		return rate
+	end;
+
+	-- ====================================
+	
+	AddMax = function(self)
+		-- (TODO) Not implemented yet
+	end;
+	
 	GetMax = function(self)
 		return 100
-	end;
-	
-	GetRegenRate = function(self)
-		return self.regen + (self.satiety_rate / self.satiety_per_percent)
-	end;
-		
-	Add = function(self, value)
-		local conditions = db.actor:cast_Actor():conditions()
-		local satiety = conditions:GetSatiety()
-		db.actor.satiety = clamp(satiety + value * self.satiety_per_percent, self.satiety_min, self.satiety_max)
-	end;
-	
-	Update = function(self, time_passed)
-		CCondition.Update(self, time_passed)
-		
-		if (self:Get() == 0) then
-			Body:AddBuff(CBuffHunger)
-		else
-			Body:RemoveBuff(CBuffHunger)
-		end
-		
-	end;
+	end;	
 }
+
+-- ================================ Hydration ===================================
 
 class "CConditionHydration" : extends "CCondition"
 {
-	__init = function(self)
-		CCondition.__init(self)
-		self.thirst_default_rate = actor_status_thirst.up_drink
-	end;
-	
-	__ThirstToHydration = function(self, thirst)
-		local thirst_max = actor_status_thirst.start_blur_4
-		return (1.0 - thirst / thirst_max) * self:GetMax()
-	end;
-	
-	__HydrationToThirst = function(self, hydration)
-		local thirst_max = actor_status_thirst.start_blur_4
-		return (1.0 - hydration / self:GetMax()) * thirst_max
-	end;
-		
-	GetMax = function(self)
-		return 100
-	end;
-	
-	Add = function(self, value)
-		local hydration = self:__ThirstToHydration(actor_status_thirst.last_drink)
-		local hydration_new = clamp(hydration + value, 0, self:GetMax())
-		local thirst_new = self:__HydrationToThirst(hydration_new)
-		actor_status_thirst.last_drink = thirst_new
-	end;
-	
-	Get = function(self)
-		local hydration = self:__ThirstToHydration(actor_status_thirst.last_drink)
-		return clamp(hydration, 0, self:GetMax())
-	end;
-	
-	GetRegenRate = function(self)
-		local ratio = self:GetMax() / actor_status_thirst.start_blur_4
-		local thirst_rate = actor_status_thirst.up_drink / actor_status_thirst.drink_chk * 6
-		local hydration_rate = -thirst_rate * ratio
-		return self.regen + hydration_rate
-	end;
-	
-	SetRateMultiplier = function(self, multiplier)
-		actor_status_thirst.up_drink = self.thirst_default_rate * multiplier
-	end;
-	
-	Update = function(self, time_passed)
-		CCondition.Update(self, time_passed)
 
-		if (self:Get() == 0) then
+-- private:
+
+	__GetRateVanilla = function(self)
+		return (CHydration.HYDRATION_DELTA / CHydration.HYDRATION_INTERVAL * 6 * 100) * (1.0 - Body.skills.health:GetConsumptionRateModifier())
+	end;
+	
+	__GetRateEFTH = function(self)
+		local rate = 0
+		
+		for name, buff in pairs(Body.buffs.active.queue) do
+			-- Account regen buffs
+			if (buff.condition == "hydration") then
+				rate = rate + buff.amount
+			end
+		end
+		
+		if (CBuffBrokenStomach.ACTIVE > 0) then
+			rate = rate + self:__GetRateVanilla() * CBuffBrokenStomach.MULTIPLIER
+		end
+		
+		return rate
+	end;
+
+-- public:
+
+	Update = function(self, time_passed)
+		if (self:Get() == 0) and 
+		   (not Body.skills.metabolism:IsElite())
+		then
 			Body:AddBuff(CBuffThirst)
 		else
 			Body:RemoveBuff(CBuffThirst)
 		end
 		
 	end;
-}
 
---[[
-	TODO
---]]
-class "CConditionStamina" : extends "CCondition"
-{
-	__init = function(self)
-		CCondition.__init(self)
+	-- ====================================
+	
+	Add = function(self, value)
+		CHydration.Add(value / self:GetMax())
+	end;
+	
+	Get = function(self)
+		return CHydration.HYDRATION * self:GetMax()
+	end;
+	
+	GetRate = function(self)
+		local rate = 0
+		
+		rate = rate + self:__GetRateVanilla()	
+		rate = rate + self:__GetRateEFTH()
+		
+		return rate
+	end;
+	
+	-- ====================================
+	
+	AddMax = function(self)
+		-- (TODO) Not implemented
+	end;
+	
+	GetMax = function(self)
+		return 100
 	end;
 }
 
+-- ================================ Stamina ===================================
+
+class "CConditionStamina" : extends "CCondition"
+{		
+	-- ====================================
+	
+	Add = function(self, value)
+		db.actor:change_power(value / self:GetMax())
+	end;
+	
+	Get = function(self)
+		return (db.actor.power * self:GetMax())
+	end;
+	
+	-- ====================================
+		
+	AddMax = function(self)
+		-- (TODO) Not implemented
+	end;
+	
+	GetMax = function(self)
+		return 100
+	end;
+	
+}
 
 --[[
 	TODO
@@ -164,102 +213,235 @@ class "CConditionStamina" : extends "CCondition"
 class "CConditionWeight" : extends "CCondition"
 {
 	__init = function(self)
-		CCondition.__init(self)
+		
 	end;
 }
 
+-- ============================== Radiation ===================================
+
 class "CConditionRadiation" : extends "CCondition"
 {
-	__init = function(self)
-		CCondition.__init(self)
-		self.radiation_damage = SYS_GetParam(2, "actor_condition", "radiation_health_v") * 6
+	
+-- private:
+
+	__GetRateVanilla = function(self)
+		local rate = 0
+		rate = rate - SYS_GetParam(2, "actor_condition", "radiation_v", 0) * 6 * 100
+		return rate
 	end;
+	
+	__GetRateEFTH = function(self)
+		local rate = 0
 		
-	GetRegenRate = function(self)
-		return self.regen
+		for name, buff in pairs(Body.buffs.active.queue) do
+			-- Account regen buffs
+			if (buff.condition == "radiation") then
+				rate = rate + buff.amount
+			end
+		end
+		
+		return rate
 	end;
-	
-	Get = function(self)
-		return db.actor.radiation * 100
-	end;
-	
-	GetMax = function(self)
-		return 100
-	end;
-	
-	GetDamageRate = function(self)
-		-- Default Anomaly: 
-		-- 		radiation_health_v = 0.0018
-		-- That means:
-		--		 0.0018 HP/gamesec = 0.0108 HP/realsec = 1.08% HP/realsec, for 1.00 radiation (~4000 dosimeter)
-		--											   = 0.27% HP/realsec, for 0.25 radiation (~1000 dosimeter), etc.
-		return self.radiation_damage * db.actor.radiation * Body.conditions.health.hp_max
-	end;
+
+-- public:
+		
+	-- =====================================
 	
 	Add = function(self, value)
 		local new_rad = clamp(db.actor.radiation + value / 100, 0, 1)
 		db.actor.radiation = new_rad
 	end;
 	
-	Update = function(self, time_passed)
-		CCondition.Update(self, time_passed)
+	Get = function(self)
+		return db.actor.radiation * 100
+	end;
+	
+	GetRate = function(self)
+		local rate = 0
 		
-		-- Radiation does not need to be a buff:
-		-- 1) It doesn't have an icon
-		-- 2) Only damages body, have no other effects
+		rate = rate + self:__GetRateVanilla()
+		rate = rate + self:__GetRateEFTH()
 		
-		if (self:Get() > 0) then
-			-- Damage per second * seconds passed
-			local damage = self:GetDamageRate() * (time_passed / 1000)
-			Body:ApplyBodyDamage(damage, true)	
-		end
+		return rate
+	end;
+	
+	-- =====================================
+	
+	AddMax = function(self)
+		-- (TODO) Not implemented
+	end;
+	
+	GetMax = function(self)
+		return 100
 	end;
 }
 
+local function GetDifference(float1, float2, precision)
+	local str1 = string.format("%." .. precision .. "f", float1)
+	local str2 = string.format("%." .. precision .. "f", float2)	
+	return tonumber(str1) - tonumber(str2)
+end;
+
+
+-- =============================== Health ======================================
+
 class "CConditionHealth" : extends "CCondition"
 {
-	__init = function(self)
-		CCondition.__init(self)
+	__init = function(self)	
 		self.hp = 0					-- Sum of HP of all limbs
-		self.hp_max = 0				-- Sum of current max HP of all limbs
-		self.hp_max_current = 0		-- Sum of top max HP of all limbs		
+		self.hp_max = 0				-- Sum of max HP of all limbs
+		self.hp_max_current = 0		-- Sum of current max HP of all limbs
+		self.hp_alive_percent = 0	-- This is an upper bound percentage for vanilla HP
 	end;
 	
+-- private:
+
+	__GetRateVanilla = function(self)
+	
+		local rate = 0
+		
+		rate = rate + SYS_GetParam(2, "actor_condition", "health_restore_v", 0) * 6 * self.hp_max							-- Passive HP regen
+		rate = rate + SYS_GetParam(2, "actor_condition", "satiety_health_v", 0) * 6 * self.hp_max							-- Passive HP regen from satiety
+		rate = rate - SYS_GetParam(2, "actor_condition", "radiation_health_v", 0) * 6 * self.hp_max	* db.actor.radiation	-- Passive HP damage from radiation
+	
+		return rate
+	end;
+	
+	__GetRateEFTH = function(self)
+	
+		local rate = 0
+		
+		for name, buff in pairs(Body.buffs.active.queue) do
+		
+			-- Account damaging debuffs (bleeds)
+			if (buff.TICK_DAMAGE_RATE) then
+				rate = rate - buff.TICK_DAMAGE_RATE
+			end
+			
+			-- Account regen buffs (item)
+			if (buff.condition == "health") then
+				rate = rate + buff.amount
+			end
+			
+		end
+		
+		return rate
+	end;
+	
+-- public:
+	
 	Refresh = function(self)
+	
+		-- Refresh health state information
+		-- based on limbs' HPs.
+		
+		local hp_start = self.hp
+		
 		self.hp = 0
 		self.hp_max	= 0
 		self.hp_max_current = 0
+		
+		local hp_alive = 0
 		
 		for name, limb in pairs(Body.limbs) do
 			self.hp = self.hp + limb.hp
 			self.hp_max = self.hp_max + limb.hp_max
 			self.hp_max_current = self.hp_max_current + limb.hp_max_current
+			
+			if (limb:IsAlive()) then
+				hp_alive = hp_alive + limb.hp_max
+			end
 		end
+		
+		self.hp_alive_percent = hp_alive / self.hp_max
+		
+		local percent = self:GetPercent()
+		db.actor:set_health_ex(percent)
+		
+		local difference = hp_start - self.hp
+		
+		EventBus:Notify(Events.PlayerHealthChanged, percent, difference)
+	end;
+		
+	-- =====================================
+	
+	Add = function(self, value)
+		-- Negative damage = heal
+		Body:ApplyBodyDamage(-value, true)
 	end;
 	
 	Get = function(self)
 		return self.hp
 	end;
 	
+	-- =====================================
+	
+	AddMax = function(self)
+		-- (TODO) Not implemented yet
+	end;
+	
 	GetMax = function(self)
 		return self.hp_max_current
 	end;
+	
+	GetRate = function(self)
+		local rate = 0
+		
+		rate = rate + self:__GetRateVanilla()
+		rate = rate + self:__GetRateEFTH()
+		
+		return rate
+	end;
+	
+	-- =====================================
 	
 	GetPercent = function(self)
 		return self.hp / self.hp_max_current
 	end;
 	
-	GetRegenRate = function(self)
-		local total = self.regen
-		for name, buff in pairs(Body.buffs.active.queue) do
-			if (buff.TICK_DAMAGE_RATE) then
-				total = total - buff.TICK_DAMAGE_RATE
-			end
-		end
-		return total
-	end;
+	-- =====================================
 	
-	Add = function(self, value)
-		Body:ApplyBodyDamage(-value, true)
+	Sync = function(self)
+	
+		local hp_vanilla = db.actor.health
+		local hp_efth = self:GetPercent()
+			
+		-- Vanilla HP is above max possible threshold - cut to the threshold.
+		if (hp_vanilla > self.hp_alive_percent) then
+			hp_vanilla = self.hp_alive_percent
+			db.actor:set_health_ex(hp_vanilla)
+		end
+		
+		--[[ 
+			Calculate the difference between Vanilla and EFTH HPs, up to some precision.
+			
+			NOTE: Precision is needed because, EFTH HP is <double> (that's how LUA stores numbers),
+				  while Vanilla HP (engine) is <float>. Conversion <double> <-> <float>
+				  results in precision lost, so we have to works up-to some decimal position.
+			
+			NOTE: difference > 0 = damage
+				  difference < 0 = heal
+		--]]
+		local difference = GetDifference(hp_efth, hp_vanilla, 5)
+		
+		--[[ 
+			If there is a difference between EFTH and Vanilla HP, it means that hp
+			was altered by external (to EFTH) means: radiation, psydamage, mods, etc...
+			
+			That means we have to change EFTH HP to be in equality with Vanilla HP.
+			There are two ways about it:
+			
+			1) EFTH HP -> Vanilla HP:
+				Distribute the WHOLE difference among all alive limbs
+			2) Vanilla HP - > EFTH HP:
+				Distribute difference uniformly (similar to how destroyed limb's redistribution works)
+				and then set Vanilla HP to new value of EFTH.
+				
+			Currently second option is implemented.
+		--]]
+		if (difference ~= 0) then			
+			Body:ApplyBodyDamage(difference * self.hp_max, true, true)
+		end
+		
 	end;
 }

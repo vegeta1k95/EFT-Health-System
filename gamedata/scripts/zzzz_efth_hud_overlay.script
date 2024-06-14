@@ -3,11 +3,11 @@ local InitTextWnd = zzzz_efth_hud_common.InitTextWnd
 local CorrectRatio = zzzz_efth_hud_common.CorrectRatio
 local GetConfig = zzz_efth_mcm.GetConfig
 
-local spairs = zzz_efth_lua.spairs
+local spairs = aaa_efth_lua.spairs
 
 local ClassUI = class
-local class = zzz_efth_lua.class
-local enum = zzz_efth_lua.enum
+local class = aaa_efth_lua.class
+local enum = aaa_efth_lua.enum
 
 -- Main overlay HUD instance
 HUD = nil
@@ -74,18 +74,24 @@ function CUIBodyOverlay:__init() super()
 	-- Fetch all the recent body info
 	self:OnLoaded()
 	
+	self.callbacks = {
+		efth_on_health_changed = function(limb) self:OnHealthChanged(limb) end,
+		efth_on_buff_added = function(buff) self:OnBuffChanged(buff, true) end,
+		efth_on_buff_removed = function(buff) self:OnBuffChanged(buff, false) end,
+		efth_on_buff_expiring = function(buff) self:OnBuffExpiring(buff) end,
+	}
+	
 	-- Register callbacks
-	RegisterScriptCallback("efth_on_health_changed", function(limb) self:OnHealthChanged(limb) end)
-	RegisterScriptCallback("efth_on_buff_added", function(buff) self:OnBuffChanged(buff, true) end)
-	RegisterScriptCallback("efth_on_buff_removed", function(buff) self:OnBuffChanged(buff, false) end)
-	RegisterScriptCallback("efth_on_buff_expiring", function(buff) self:OnBuffExpiring(buff) end)
+	for cb, func in pairs(self.callbacks) do
+		RegisterScriptCallback(cb, func)
+	end
 end
 
 function CUIBodyOverlay:__finalize()
-	UnregisterScriptCallback("efth_on_health_changed")
-	UnregisterScriptCallback("efth_on_buff_added")
-	UnregisterScriptCallback("efth_on_buff_removed")
-	UnregisterScriptCallback("efth_on_buff_expiring")
+	-- Unregister callbacks
+	for cb, func in pairs(self.callbacks) do
+		UnregisterScriptCallback(cb, func)
+	end
 end
 
 function CUIBodyOverlay:InitControls()

@@ -1,6 +1,5 @@
-local class = zzz_efth_lua.class
-local ChooseRandom = zzz_efth_lua.ChooseRandom
-local VolumeAnimator = zzz_efth_audio.VOLUME_ANIMATOR
+local class = aaa_efth_lua.class
+local ChooseRandom = aaa_efth_lua.ChooseRandom
 
 -- =============================== BUFFS =======================================
 
@@ -20,11 +19,8 @@ class "CBuffQueue"
 		
 		if (self.is_active) then
 			buff.__class.ACTIVE = buff.__class.ACTIVE + 1
-		end
-		
-		buff:OnAdded()
-		
-		if (self.is_active) then
+			buff:OnAdded()
+			EventBus:Notify(Events.BuffAdded, buff)
 			SendScriptCallback("efth_on_buff_added", buff)
 		end
 		
@@ -40,6 +36,7 @@ class "CBuffQueue"
 		buff:OnRemoved()
 		
 		if (self.is_active) then
+			EventBus:Notify(Events.BuffRemoved, buff)
 			SendScriptCallback("efth_on_buff_removed", buff)
 		end
 		
@@ -59,7 +56,7 @@ class "CBuffQueue"
 			end
 			
 			-- If buff has expired - remove
-			if (buff.expired) then
+			if (buff.expired == true) then
 				self:Remove(buff_id)
 			end
 			
@@ -227,6 +224,7 @@ class "CDurational"
 
 	__init = function(self, duration)
 		self.duration = duration
+		self.duration_initial = duration
 		self.last_update = time_global()
 		self.expired = false
 	end;
@@ -314,9 +312,6 @@ class "CBuffBleedLight" : extends {"CBuff", "CPeriodic"}
 	
 	OnAdded = function(self)
 		self:GetLimb():RemoveBuff(CBuffFreshWound)
-		
-		-- +0.3 Vitality for each application
-		Body.skills.vitality:AddBase(0.3)
 	end;
 }
 
@@ -356,9 +351,6 @@ class "CBuffBleedHeavy" : extends {"CBuff", "CPeriodic"}
 	OnAdded = function(self)
 		self:GetLimb():RemoveBuff(CBuffFreshWound)
 		self:GetLimb():RemoveBuff(CBuffBleedLight)
-		
-		-- +0.3 Vitality for each application
-		Body.skills.vitality:AddBase(0.3)
 	end;
 	
 	OnRemoved = function(self)
@@ -452,13 +444,7 @@ class "CBuffFreshWound" : extends {"CBuff", "CDurational"}
 	ICON = "fresh_wound",
 
 	__init = function(self)
-		if (Body.skills.vitality:IsElite()) then
-			-- Max vitality - 120 sec.
-			CDurational.__init(self, 120000)
-		else
-			-- Default - 240 sec.
-			CDurational.__init(self, 240000)
-		end
+		CDurational.__init(self, 240000)
 	end;
 	
 	OnFootstep = function(self, is_sprinting)
@@ -512,6 +498,12 @@ class "CBuffPain" : extends "CBuff"
 		self.duration_update = time_now
 	end;
 	
+	OnAdded = function(self)
+		-- Each application of "Pain" debuff levels 
+		-- levels "Stress Resistance" skill.
+		Body.skills.stress_resistance:AddBase(0.33)
+	end;
+	
 	OnRemoved = function(self)
 		Body:RemoveBuff(CBuffTremor, self.ID)
 	end;
@@ -521,6 +513,8 @@ class "CBuffPain" : extends "CBuff"
 class "CBuffPainTemporary" : extends {"CBuffPain", "CDurational"}
 {
 	ICON = "pain",
+	
+	IS_SUSPENDABLE = true,
 	
 	__init = function(self, duration)
 		CDurational.__init(self, duration)
@@ -545,10 +539,6 @@ class "CBuffConcussion" : extends {"CBuff", "CDurational"}
 		CDurational.__init(self, duration)
 	end;
 	
-	OnLoaded = function(self)
-		self:OnAdded()
-	end;
-	
 	OnAdded = function(self)
 
 		level.add_pp_effector("efth\\concussion.ppe", 99123, false)
@@ -563,10 +553,10 @@ class "CBuffConcussion" : extends {"CBuff", "CDurational"}
 		snd:play(db.actor, 0, sound_object.s2d)
 		snd.volume = 1 * 3
 		
-		CBuffConcussion.VOLUME = math.max(CBuffConcussion.VOLUME, get_console_cmd(2, "snd_volume_eff"))
+		CBuffConcussion.VOLUME = math.max(CBuffConcussion.VOLUME, CVolume.Get())
 		
-		VolumeAnimator:SetRaw(0.01)
-		VolumeAnimator:Set(CBuffConcussion.VOLUME, self.duration + 3000)
+		CVolume.SetRaw(0.01)
+		CVolume.Set(CBuffConcussion.VOLUME, self.duration + 3000)
 		
 	end;
 	
@@ -585,34 +575,43 @@ class "CBuffTremor" : extends "CBuff"
 	
 	IS_SUSPENDABLE = true,
 	
-	OnAdded = function(self)
-		self:Update()
-	end;
-	
-	OnRemoved = function(self)
-		self:Update()
-	end;
-	
-	OnWeaponZoom = function(self)
-		self:Update()
-	end;
-	
-	Update = function(self)
-		if (CBuffTremor.ACTIVE > 0 and Body.is_ads) then
+	__init = function(self)
+		self.callback_zoom_in = function()
 			if (not level.check_cam_effector(8881)) then
-				level.add_cam_effector("camera_effects\\earthquake_100.anm", 8881, true, "", 0,	 true, 0.2)			
+				local power = 0.2 * (1.0 - Body.skills.stress_resistance:GetTremorPowerModifier())
+				level.add_cam_effector("camera_effects\\earthquake_100.anm", 8881, true, "", 0,	 true, power)			
 			end
-		else
+		end
+		
+		self.callback_zoom_out = function()
 			if (level.check_cam_effector(8881)) then
 				level.remove_cam_effector(8881)
 			end
 		end
+	end;
+	
+	OnAdded = function(self)
+		EventBus:Subscribe(Events.OnWeaponZoomIn, self.callback_zoom_in)
+		EventBus:Subscribe(Events.OnWeaponZoomOut, self.callback_zoom_out)
+		if (CAiming.is_ads) then
+			self.callback_zoom_in()
+		else
+			self.callback_zoom_out()
+		end
+	end;
+	
+	OnRemoved = function(self)
+		EventBus:Unsubscribe(Events.OnWeaponZoomIn, self.callback_zoom_in)
+		EventBus:Unsubscribe(Events.OnWeaponZoomOut, self.callback_zoom_out)
+		self.callback_zoom_out()
 	end;
 }
 
 class "CBuffTremorTemporary" : extends {"CBuffTremor", "CDurational"}
 {
 	ICON = "tremor",
+	
+	IS_SUSPENDABLE = true,
 	
 	__init = function(self, duration)
 		CDurational.__init(self, duration)
@@ -680,11 +679,7 @@ class "CBuffBrokenLegDebuff" : extends "CBuff"
 		self.tag = tag
 		self.speed = speed or 1
 	end;
-	
-	OnLoaded = function(self)
-		self:OnAdded()
-	end;
-	
+		
 	OnAdded = function(self)
 		CMovement.DisableSprint()
 		CMovement.AddSpeed(self.tag, self.speed)
@@ -773,6 +768,24 @@ class "CBuffBrokenArmDebuff" : extends "CBuff"
 	end;
 }
 
+-- ==================== PENALTY STOMACH ======================
+
+class "CBuffBrokenStomach" : extends {"CBuff", "CPeriodic"}
+{
+	MULTIPLIER = 5,
+
+	__init = function(self, condition, amount)
+		CPeriodic.__init(self, 1000)
+		self.amount_hydration = Body.conditions.hydration:__GetRateVanilla() * CBuffBrokenStomach.MULTIPLIER
+		self.amount_energy = Body.conditions.energy:__GetRateVanilla() * CBuffBrokenStomach.MULTIPLIER
+	end;
+	
+	OnTick = function(self, time_passed)
+		Body.conditions.energy:Add(self.amount_energy)
+		Body.conditions.hydration:Add(self.amount_hydration)
+	end;
+}
+
 -- ======================== SKILLS ===========================
 
 class "CBuffSkill" : extends {"CBuff", "CDurational"}
@@ -798,6 +811,11 @@ class "CBuffSkill" : extends {"CBuff", "CDurational"}
 	
 	OnRemoved = function(self)
 		Body.skills[self.skill]:AddBonus(-self.amount)
+		
+		if (self.amount < 0) then
+			-- Per 1 second of negative effect duration you gain ~0.0045 points of Immunity
+			Body.skills.immunity:AddBase(0.0045 * self.duration_initial / 1000)
+		end
 	end;
 	
 }
@@ -828,7 +846,7 @@ class "CBuffPainkiller" : extends {"CBuff", "CDurational"}
 {
 	ICON = "painkiller",
 	
-	__init = function(self, duration)
+	__init = function(self, duration)	
 		CDurational.__init(self, duration)
 	end;
 	
@@ -882,15 +900,21 @@ class "CBuffConditionMax" : extends {"CBuff", "CDurational"}
 	
 	OnRemoved = function(self)
 		Body.conditions[self.condition]:AddMax(-self.amount)
+		
+		if (self.amount < 0) then
+			-- Per 1 second of negative effect duration you gain ~0.0045 points of Immunity
+			Body.skills.immunity:AddBase(0.0045 * self.duration_initial / 1000)
+		end
 	end;
 }
 
-class "CBuffConditionRegen" : extends {"CBuff", "CDurational"}
+class "CBuffConditionRegen" : extends {"CBuff", "CDurational", "CPeriodic"}
 {
 	ICON = "buff",
 	
 	__init = function(self, condition, amount, duration)
 		CDurational.__init(self, duration)
+		CPeriodic.__init(self, 1000)
 		self.condition = condition
 		self.amount = amount
 		if (amount >= 0) then
@@ -900,15 +924,19 @@ class "CBuffConditionRegen" : extends {"CBuff", "CDurational"}
 		end
 	end;
 	
-	OnAdded = function(self)
-		Body.conditions[self.condition]:AddRegen(self.amount)
+	OnTick = function(self, time_passed)
+		Body.conditions[self.condition]:Add(self.amount)
 	end;
 	
 	OnRemoved = function(self)
-		Body.conditions[self.condition]:AddRegen(-self.amount)
+		if (self.amount < 0) then
+			-- Per 1 second of negative effect duration you gain ~0.0045 points of Immunity
+			Body.skills.immunity:AddBase(0.0045 * self.duration_initial / 1000)
+		end
 	end;
 }
 
+-- ================== CAMPFIRE  ======================
 
 class "CBuffCampfire" : extends {"CBuff", "CPeriodic"}
 {
@@ -923,4 +951,46 @@ class "CBuffCampfire" : extends {"CBuff", "CPeriodic"}
 	OnTick = function(self)
 		Body:ApplyBodyDamage(-self.amount, false)
 	end;
+}
+
+
+-- ================== BERSERK  ======================
+
+class "CBuffBerserk" : extends {"CBuff", "CDurational"}
+{
+	ICON = "berserk",
+	
+	__init = function(self, duration)
+		CDurational.__init(self, duration)
+		self.fov = get_console_cmd(2, "fov")
+	end;
+	
+	OnLoaded = function(self)
+		exec_console_cmd("fov 120")
+	end;
+	
+	OnAdded = function(self)
+		-- Change FOV
+		exec_console_cmd("fov 120")
+		
+		-- Suspend effects
+		Body.buffs:Suspend()
+		
+		-- Add speed
+		CMovement.AddSpeed("berserk", 1.2)
+		CMovement.AddSpeedSprint("berserk", 1.2)
+	end;
+	
+	OnRemoved = function(self)
+		-- Restore FOV
+		exec_console_cmd("fov " .. self.fov)
+		
+		-- Unsuspend effects
+		Body.buffs:Unsuspend()
+		
+		-- Remove speed
+		CMovement.RemoveSpeed("berserk")
+		CMovement.RemoveSpeedSprint("berserk")
+	end;
+
 }

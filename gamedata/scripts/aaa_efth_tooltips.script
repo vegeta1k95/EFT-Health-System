@@ -4,7 +4,7 @@ local strsub = string.sub
 local strlen = string.len
 local floor = math.floor
 
-local class = zzz_efth_lua.class
+local class = aaa_efth_lua.class
 local Colors = zzz_efth_utils.Colors
 
 -- ============================ String utils ==================================
@@ -120,7 +120,7 @@ function ui_item.build_desc_footer(obj, sec, str)
 	local desc = BuildFooter(obj, sec, str)
 	local footer = CItemFooter(desc)
 	
-	local item = CItem(obj)
+	local item = CItem(obj, sec)
 	
 	if (item.is_limb_specific) then
 		footer:AddTitle(gc("efth_limb"))
@@ -174,11 +174,12 @@ function ui_item.build_desc_footer(obj, sec, str)
 		footer:AddTitle(gc("efth_effects"))
 			
 		if (item.cache.remove_pain > 0) then
+			local duration = item.cache.remove_pain * (1.0 + Body.skills.immunity:GetPainkillerDurationModifier())
 			local builder = CStringBuilder()
 			builder:Append(gc("efth_adds"))
 			builder:Append(gc("efth_painkiller"), Colors.TOOLTIP_GREEN) 
 			builder:Append("-")
-			builder:Append(TimeString(item.cache.remove_pain), Colors.TOOLTIP_YELLOW)
+			builder:Append(TimeString(duration), Colors.TOOLTIP_YELLOW)
 			footer:AddItem(builder:Trim().str)
 		end
 		
@@ -201,11 +202,12 @@ function ui_item.build_desc_footer(obj, sec, str)
 		end
 		
 		if (item.cache.apply_tremor_duration > 0) then
+			local duration = item.cache.apply_tremor_duration * (1.0 - Body.skills.metabolism:GetModifier())
 			local builder = CStringBuilder()
 			builder:Append(gc("efth_adds"))
 			builder:Append(gc("efth_tremor"), Colors.TOOLTIP_RED) 
 			builder:Append("-")
-			builder:Append(TimeString(item.cache.apply_tremor_duration), Colors.TOOLTIP_YELLOW)
+			builder:Append(TimeString(duration), Colors.TOOLTIP_YELLOW)
 			builder:Append(gc("efth_delay"))
 			builder:Append("-")
 			builder:Append(TimeString(item.cache.apply_tremor_delay), Colors.TOOLTIP_YELLOW)
@@ -213,11 +215,12 @@ function ui_item.build_desc_footer(obj, sec, str)
 		end
 		
 		if (item.cache.apply_concussion_duration > 0) then
+			local duration = item.cache.apply_concussion_duration * (1.0 - Body.skills.metabolism:GetModifier())
 			local builder = CStringBuilder()
 			builder:Append(gc("efth_adds"))
 			builder:Append(gc("efth_concussion"), Colors.TOOLTIP_RED) 
 			builder:Append("-")
-			builder:Append(TimeString(item.cache.apply_concussion_duration), Colors.TOOLTIP_YELLOW)
+			builder:Append(TimeString(duration), Colors.TOOLTIP_YELLOW)
 			builder:Append(gc("efth_delay"))
 			builder:Append("-")
 			builder:Append(TimeString(item.cache.apply_concussion_delay), Colors.TOOLTIP_YELLOW)
@@ -236,6 +239,11 @@ function ui_item.build_desc_footer(obj, sec, str)
 			local skill_amount 	 = item.cache[prefix_amount]
 			
 			if (skill_amount ~= 0) then
+			
+				-- Metabolism reduces duration of negative effects
+				if (skill_amount < 0) then
+					skill_duration = skill_duration * (1.0 - Body.skills.metabolism:GetModifier())
+				end
 				
 				local builder = CStringBuilder()
 				builder:Append(gc("efth_skill"))
@@ -281,6 +289,12 @@ function ui_item.build_desc_footer(obj, sec, str)
 			end
 			
 			if (flat_amount_max ~= 0) then
+				
+				-- Metabolism reduces duration of negative effects
+				if (flat_amount_max < 0) then
+					flat_amount_max_duration = flat_amount_max_duration * (1.0 - Body.skills.metabolism:GetModifier())
+				end
+			
 				local builder = CStringBuilder()
 				builder:Append(gc("efth_max"))
 				builder:Append(gc("efth_condition_" .. condition_name))
@@ -297,6 +311,12 @@ function ui_item.build_desc_footer(obj, sec, str)
 			end
 			
 			if (regen_amount ~= 0) then
+			
+				-- Metabolism reduces duration of negative effects
+				if (regen_amount < 0) then
+					regen_duration = regen_duration * (1.0 - Body.skills.metabolism:GetModifier())
+				end
+			
 				local builder = CStringBuilder()
 				builder:Append(gc("efth_condition_regen_" .. condition_name))
 				builder:Append("(", nil, true)

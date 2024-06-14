@@ -57,4 +57,8 @@
 		<texture>ui_efth_hud_effect_concussion</texture>
 	</effect_concussion>
 	
+	<effect_berserk x="0" y="0" width="24" height="22" la_alpha="1" stretch="1">
+		<texture>ui_efth_hud_effect_berserk</texture>
+	</effect_berserk>
+	
 </w>

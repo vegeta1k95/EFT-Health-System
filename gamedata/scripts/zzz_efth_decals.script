@@ -1,5 +1,5 @@
-local class = zzz_efth_lua.class
-local ChooseRandom = zzz_efth_lua.ChooseRandom
+local class = aaa_efth_lua.class
+local ChooseRandom = aaa_efth_lua.ChooseRandom
 local CValueAnimator = zzz_efth_utils.CValueAnimator
 
 class "CDecal" 
@@ -76,11 +76,19 @@ class "CDecalBlood" : extends "CDecal"
 {
 	__init = function(self)
 		CDecal.__init(self, "vignette_blood", true, GetARGB(0, 255, 255, 255, 255))
+		self.animator = CValueAnimator()
+		self.animator.OnValueChanged = function(value)
+			self:SetColor(GetARGB(value*255, 255, 255, 255))
+		end
+	end;
+	
+	UpdateAlpha = function(self)
+		local param = LerpHP(0.2, 0.8, Body.conditions.health:GetPercent())
+		self.animator:Set(param, 500)
 	end;
 	
 	OnUpdate = function(self)
-		local param = LerpHP(0.2, 0.8, Body.conditions.health:GetPercent())
-		self:SetColor(GetARGB(param*255, 255, 255, 255))
+		self.animator:Update(time_global())
 	end;
 }
 
@@ -127,7 +135,7 @@ Decals = {
 -- ====================================================================
 
 function OnHealthChanged(limb)
-	Decals.blood_vignette:Update()
+	Decals.blood_vignette:UpdateAlpha()
 end
 
 function OnBuffAdded(buff)
@@ -146,7 +154,8 @@ end
 
 function ActorOnUpdate()
 	-- Continious update of decals
-	Decals.pain_vignette:Update(time_global())
+	Decals.pain_vignette:Update()
+	Decals.blood_vignette:Update()
 end
 
 function ActorOnNetDestroy()

@@ -1,9 +1,24 @@
 
-; Bleeding and wounds treating system is handled by mod's scripts.
-; Here we remove all vanilla bleeding effects.
+; Here we mostly disable vanilla Anomaly features
+; which are replaced by analogous EFTH features.
 
 ![actor_condition]
+; Disable Vanilla bleedings
 bleeding_v 				= 0.0
 wound_incarnation_v		= 1.0
 min_wound_size 			= 0.0
 bleed_speed_k			= 0.0
+
+; Disable Vanilla passive health regen
+health_restore_v        = 0.0
+satiety_health_v		= 0.0
+satiety_health_v_sleep  = 0.0
+
+; Disable Vanilla limping
+use_limping_stat		= off
+limping_health_begin 	= 0.00 
+limping_health_end   	= 0.00
+
+![stalker_condition]
+health_restore_v        = 0.0
+satiety_health_v		= 0.0

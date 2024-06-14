@@ -1,5 +1,5 @@
-local class = zzz_efth_lua.class
-local enum = zzz_efth_lua.enum
+local class = aaa_efth_lua.class
+local enum = aaa_efth_lua.enum
 
 class "Color"
 {
@@ -130,6 +130,10 @@ class "CValueAnimator"
         self.working = false
         
     end;
+	
+	Get = function(self)
+		return self.value
+	end;
 	
 	SetRaw = function(self, value)
 		self.value = value

@@ -1,8 +1,9 @@
 -- If you don't use MCM, change your defaults from here.
 local DEFAULTS = {
 
-	["general_damage_multiplier"]	= 3.5,
+	["general_damage_multiplier"]	= 1.0,
 	["general_campfire_heal"]		= true,
+	["general_impact_effect"]		= true,
 
 	["inv_bg_alpha"] 		   		= 0.3,
 	["inv_show_conditions"]	   		= true,
@@ -34,8 +35,9 @@ function on_mcm_load()
 			{id = "title", 						type = "slide", link = "ui_options_slider_player", text = "ui_mcm_efth_title", size = {512,50}, spacing = 20 },
 			
 			-- GENERAL
-			{id = "general_damage_multiplier", 	type = "track", val = 2, min = 0.1, max = 10,  step = 0.1, def = 3.5},
+			{id = "general_damage_multiplier", 	type = "track", val = 2, min = 0.1, max = 10,  step = 0.1, def = 1.0},
 			{id = "general_campfire_heal",    	type = "check", val = 1, def = true},
+			{id = "general_impact_effect",    	type = "check", val = 1, def = true},
 			{id = "divider", 					type = "line" },
 			
 			-- INVENTORY

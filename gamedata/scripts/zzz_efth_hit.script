@@ -1,5 +1,6 @@
-local class = zzz_efth_lua.class
-local enum = zzz_efth_lua.enum
+local class = aaa_efth_lua.class
+local enum = aaa_efth_lua.enum
+local ChooseRandom = aaa_efth_lua.ChooseRandom
 
 local GetConfig = zzz_efth_mcm.GetConfig
 
@@ -140,7 +141,14 @@ function GetNearestActorBoneID(npc)
 	return picked_bone_id
 end
 
-function CBody:OnHit(hit, bone_id)
+EventBus:Subscribe(Events.PlayerPreHitPostCalcs, function(hit, bone_id)
+
+	-- We block vanilla damage passing through, because actual applied damage 
+	-- to the health may be different from incoming damage because of
+	-- how limb damage redistribution works.
+	-- Change to vanilla health will be applied by each limb accordingly.
+	local hit_power = hit.power
+	hit.power = 0
 
 	-- No bone ID, can skip
 	if (bone_id == 65535) then
@@ -153,15 +161,20 @@ function CBody:OnHit(hit, bone_id)
 		return	
 	end
 	
-	local damage = hit.power * 100	* GetConfig("general_damage_multiplier")	-- Convert float damage range to normal damage range * damage modifier
-	local source = hit.draftsman											    -- Who did this
+	-- NOTE: `hit.power` is a float number (0..1), which represents
+	-- 		  damage received as percent from TOTAL health.
+	local damage_percent = math.floor(hit_power * 10000) / 10000
+	local damage_flat = damage_percent * Body.conditions.health.hp_max	-- Conver percent to flat value
+	damage_flat = damage_flat * GetConfig("general_damage_multiplier") 	-- Apply optional modifier
+	
+	local source = hit.draftsman									   	-- Who did this
 	local hit_type = GetHitTypeByID(hit.type)
 	local limb_name
 	
 	-- Fall damage - distribute halved damage to each leg
 	if (source) and (source:id() == 0) and (hit.type == EHitTypes.Strike.ID) then
-		self:ApplyDamage(self.limbs.leg_left, damage / 2, EHitTypes.Fall)
-		self:ApplyDamage(self.limbs.leg_right, damage / 2, EHitTypes.Fall)
+		Body:ApplyDamage(Body.limbs.leg_left, damage_flat / 2, EHitTypes.Fall)
+		Body:ApplyDamage(Body.limbs.leg_right, damage_flat / 2, EHitTypes.Fall)
 		return
 	end
 	
@@ -183,34 +196,28 @@ function CBody:OnHit(hit, bone_id)
 	
 	-- Known bone hit - apply damage
 	if (limb_name) then
-		self:ApplyDamage(self.limbs[limb_name], damage, hit_type)
+		Body:ApplyDamage(Body.limbs[limb_name], damage_flat, hit_type)
 	-- Unknown bone hit - chose random limb from arms / torso
 	else
 		local rand = math.random(1,3)
 		if rand == 1 then
-			self:ApplyDamage(self.limbs.torso, damage, hit_type)
+			Body:ApplyDamage(Body.limbs.torso, damage_flat, hit_type)
 		elseif rand == 2 then
-			self:ApplyDamage(self.limbs.arm_left, damage, hit_type)
+			Body:ApplyDamage(Body.limbs.arm_left, damage_flat, hit_type)
 		else
-			self:ApplyDamage(self.limbs.arm_right, damage, hit_type)
+			Body:ApplyDamage(Body.limbs.arm_right, damage_flat, hit_type)
 		end
 	end
 	
-end
+end)
 
--- ======================== CALLBACKS ================================
+-- ========================= EFFECTS =================================
 
-function ActorOnBeforeHitAfterCalcs(hit, target, bone_id)
-
-	-- If not an actor - not interested.
-	if (target:id() ~= db.actor:id()) then
-		return
+OriginalUpdateImpact = actor_effects.Update_Impact
+actor_effects.Update_Impact = function(actor)
+	-- Vanilla camera impact effect is now optional
+	-- See MCM options.
+	if (GetConfig("general_impact_effect")) then
+		OriginalUpdateImpact(actor)	
 	end
-
-	Body:OnHit(hit, bone_id)
-end
-
-
-function on_game_start()		
-	RegisterScriptCallback("on_before_hit_after_calcs", ActorOnBeforeHitAfterCalcs)
 end

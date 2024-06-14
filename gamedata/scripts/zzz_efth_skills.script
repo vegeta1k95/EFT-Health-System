@@ -1,8 +1,11 @@
-local class = zzz_efth_lua.class
+local class = aaa_efth_lua.class
+local max = math.max
+local GetOverweight = actor_status.get_overweight
 
 class "CSkill"
 {
-	__init = function(self)
+	__init = function(self, name)
+		self.name = name
 		self.value = 0
 		self.bonus = 0
 	end;
@@ -15,152 +18,618 @@ class "CSkill"
 		return (self:Get() >= 50)
 	end;
 	
-	AddBase = function(self, value)
-		local new_value = math.min(self.value + value, 50)
+	AddBase = function(self, amount)
+		local new_value = clamp(self.value + amount, 0, 50)
 		if (self.value ~= new_value) then
 			self.value = new_value
 			if (value ~= 0) then
-				self:OnChanged(value, false)
+				self:OnChanged(amount, false)
+				EventBus:Notify(Events.SkillChanged, self, amount, false)
 			end
 		end
 		
 	end;
 	
-	AddBonus = function(self, value)
-		self.bonus = self.bonus + value
-		if (value ~= 0) then
-			self:OnChanged(value, true)
+	AddBonus = function(self, amount)
+		self.bonus = self.bonus + amount
+		if (amount ~= 0) then
+			self:OnChanged(amount, true)
+			EventBus:Notify(Events.SkillChanged, self, amount, true)
 		end
 	end;
 	
-	OnChanged = function(self, value, is_bonus)
+	OnChanged = function(self, amount, is_bonus)
 		-- OVERRIDE
 	end;
 }
+
+-- ======================================================================
+
+--[[
+	REFERENCE: https://escapefromtarkov.fandom.com/wiki/Endurance
+	
+	- ✗ Increases stamina (1% per level → +50% at Elite Level)
+	- ✗ Reduces jump stamina drain (0.6% per level → -30% at Elite Level)
+	- ✗ Increases breath holding (2% per level → +100% at Elite Level)
+	- ✗ Reduces breath recovery time (1% per level → -50% at Elite Level)
+	
+	Elite:
+		✗ - Increases stamina (+20% → +70% total)
+		✗ - Increased hands endurance (?)
+		✗ - Breathing is independent of energy
+		
+	Leveling:
+		✓  - Sprinting while not being overweight (i.e yellow or red)
+		✓  - Walking while not being overweight (i.e yellow or red)
+--]]
+
+
+ENDURANCE_MOD_STAMINA_MAX = 0.01
+ENDURANCE_MOD_STAMINA_JUMP = 0.006
+ENDURANCE_MOD_BREATH_HOLD = 0.02
+ENDURANCE_MOD_BREATH_RECOVERY = 0.01
+
+ENDURANCE_ELITE_STAMINA = 0.2
+
+ENDURANCE_LVL_PER_STEP_WALK = 0.0001		-- Level per walking step while not overweight
+ENDURANCE_LVL_PER_STEP_SPRINT = 0.0002		-- Level per sprinting step while not overweight
+ENDURANCE_LVL_PER_JUMP = 0.001				-- Level per jump while not overweight
 
 
 class "CSkillEndurance" : extends "CSkill"
 {
 	__init = function(self)
 		CSkill.__init(self)
+		EventBus:SubscribeMethod(self, self.OnFootstep, Events.Footstep)
+		EventBus:SubscribeMethod(self, self.OnJump, Events.Jump)
 	end;
 	
-	OnChanged = function(self, value, is_bonus)
-		
-		-- Every time skill points are gained for Endurance, 
-		-- 25% of the amount is gained for Health.
-		if (value > 0) and (not is_bonus) then
-			Body.skills.health:AddBase(0.25 * value)
+	OnJump = function(self)
+		local overweight = GetOverweight(true)
+		if (overweight == 0) then
+			self:AddBase(ENDURANCE_LVL_PER_JUMP)
 		end
-		
 	end;
 	
+	OnFootstep = function(self)
+		local overweight = GetOverweight(true)
+		if (overweight == 0) then
+			-- Check if sprinting
+			if (IsMoveState('mcSprint')) then
+				self:AddBase(ENDURANCE_LVL_PER_STEP_SPRINT)
+			else
+				self:AddBase(ENDURANCE_LVL_PER_STEP_WALK)
+			end
+		end
+	end;	
 }
+
 
 --[[
 	REFERENCE: https://escapefromtarkov.fandom.com/wiki/Health
 	
-	- Reduces limb fracture chance (1.2% per level → -60% at Elite Level)
-	- Reduces dehydration rate (0.6% per level → -30% at Elite Level)
-	- Reduces energy consumption (0.6% per level → -30% at Elite Level)	(TODO)
-		
+	- ✓ Reduces fracture chance (1.2% per level → -60% at Elite Level)
+	- ✓ Reduces dehydration rate (0.6% per level → -30% at Elite Level)
+	- ✓ Reduces energy consumption (0.6% per level → -30% at Elite Level)
+	
+	Leveling:
+		✓ - 25% of Vitality points are converted to Health
+		✓ - 25% of Strength points are converted to Health
+		✓ - 25% of Endurance points are converted to Health
+	
 --]]
+
+HEALTH_MOD_CONSUMPTION = 0.006
+HEALTH_MOD_FRACTURE = 0.012
+
+HEALTH_LVL_MOD = 0.25
+
 class "CSkillHealth" : extends "CSkill"
 {
 	__init = function(self)
 		CSkill.__init(self)
+		
+		self.update_last = 0
+		self.update_interval = 100
+		
+		EventBus:SubscribeMethod(self, self.OnUpdate, Events.Update)
+		EventBus:SubscribeMethod(self, self.OnSkillChanged, Events.SkillChanged)
+	end;
+		
+	GetConsumptionRateModifier = function(self)
+		return (self:Get() * HEALTH_MOD_CONSUMPTION)
 	end;
 	
-	GetConsumptionRateMultiplier = function(self)
-		return (self:Get() * 0.006)
+	GetFractureModifier = function(self)
+		return (self:Get() * HEALTH_MOD_FRACTURE)
 	end;
 	
-	GetFractureChanceReduce = function(self)
-		return (self:Get() * 0.012)
+	OnSkillChanged = function(self, skill, amount, is_bonus)
+		
+		local cls = skill.__class
+		
+		-- Leveling "Strength", "Endurance" or "Vitality"
+		-- yield HEALTH_LVL_MOD% of points to Health
+		if (amount > 0) and (not is_bonus) and
+		   ((cls == CSkillStrength) or
+		    (cls == CSkillVitality) or
+		    (cls == CSkillEndurance))
+		then
+			self:AddBase(amount * HEALTH_LVL_MOD)
+		end
+				
 	end;
 	
-	OnChanged = function(self, value, is_bonus)
-		local rate_multiplier = 1.0 - self:GetConsumptionRateMultiplier()
-		Body.conditions.hydration:SetRateMultiplier(rate_multiplier)
+	OnUpdate = function(self)
+	
+		local time_now = time_global()
+	
+		if (self.update_last == 0) then
+			self.update_last = time_now
+		end
+		
+		local time_passed = time_now  - self.update_last
+		
+		-- Add additional regeneration for hydration/energy as a percent
+		-- from default decay rate, based on Health Skill level.	
+		if (time_passed > self.update_interval) then
+			local modifier = (time_passed / 1000) * self:GetConsumptionRateModifier()
+			
+			local change_energy = SYS_GetParam(2, "actor_condition", "satiety_v", 0) * 6 * modifier
+			local change_hydration = -CHydration.HYDRATION_DELTA * modifier
+			
+			db.actor:change_satiety(change_energy)
+			CHydration.Add(change_hydration)
+			
+			self.update_last = time_now
+		end
+	
 	end;
 }
 
 --[[
-	TODO
+	REFERENCE: https://escapefromtarkov.fandom.com/wiki/Immunity
+	
+	- ✓ Reduces all negative effects from stimulants, food, water (1% per level → +50% at Elite Level)
+	- ✓ Increases painkiller action time (0.6% per level) (+30% at Elite Level)
+	- ✗ Reduces poison effect force (1% per level → +50% at Elite Level)
+		
+	- Elite level: 
+		✓ - 55% Chance to gain immunity to negative effects from stimulants, food, water
+		✗ - 50% Chance to gain immunity to poisons
+		
+	Leveling
+		✓ - Using and surviving the negative buffs (stimulants/food) (0.0045 points / 1 sec - applied on expiration)
 --]]
+
+IMMUNITY_MOD_PAINKILLER = 0.006
+IMMUNITY_MOD_DEBUFFS = 0.01
+
+IMMUNITY_ELITE_CHANCE_DEBUFF = 0.55
+
 class "CSkillImmunity" : extends "CSkill"
 {
 	__init = function(self)
 		CSkill.__init(self)
+		EventBus:SubscribeMethod(self, self.OnItemUse, Events.ItemUse)
+		EventBus:SubscribeMethod(self, self.OnBuffAdded, Events.BuffAdded)
 	end;
+	
+	GetDebuffModifier = function(self)
+		return (self:Get() * IMMUNITY_MOD_DEBUFFS)
+	end;
+	
+	GetPainkillerModifier = function(self)
+		return (self:Get() * IMMUNITY_MOD_PAINKILLER)
+	end;
+	
+	GetChanceToDebuff = function(self)
+		return (1.0 - IMMUNITY_ELITE_CHANCE_DEBUFF)
+	end;
+	
+	OnBuffAdded = function(self, buff)
+		if (buff.ICON == "painkiller") then
+			buff.duration = buff.duration * (1.0 + self:GetPainkillerModifier())
+		end
+	end;
+	
+	OnItemUse = function(self, item)
+		
+		local section = item:section()
+	
+		-- Fetch food properties
+		local eat_thirstiness = SYS_GetParam(2, section, "eat_thirstiness") or 0
+		local eat_satiety = SYS_GetParam(2, section, "eat_satiety") or 0
+		local eat_radiation = SYS_GetParam(2, section, "eat_radiation") or 0
+		local eat_alcohol = SYS_GetParam(2, section, "eat_alcohol") or 0
+		local eat_health = SYS_GetParam(2, section, "eat_health") or 0
+		
+		local conditions = db.actor:cast_Actor():conditions()
+		
+		-- Replenish part of energy removed by food
+		if (eat_satiety < 0) then
+			local change = -eat_satiety * self:GetDebuffModifier()
+			conditions:ChangeSatiety(change)
+		end
+		
+		-- Replenish part of hydration removed by food
+		if (eat_thirstiness > 0) then
+			local scale = (1000 / actor_status_thirst.start_blur_4)
+			local change = eat_thirstiness * scale * self:GetDebuffModifier()
+			CHydration.Add(change)
+		end
+		
+		-- Replenish part of damage applied by food
+		if (eat_health < 0) then
+			local change = -eat_health * self:GetDebuffModifier()
+			conditions:ChangeHealth(change)
+		end
+		
+		-- Remove part of alcohol applied by food
+		if (eat_alcohol > 0) then
+			local change = -eat_alcohol * self:GetDebuffModifier()
+			conditions:ChangeAlcohol(change)
+		end
+		
+		-- Remove part of radiation applied by food
+		if (eat_radiation > 0) then
+			local change = -eat_radiation * self:GetDebuffModifier()
+			conditions:ChangeRadiation(change)
+		end
+		
+	end;
+	
 }
 
+
 --[[
-	TODO
+	REFERENCE: https://escapefromtarkov.fandom.com/wiki/Metabolism
+	
+	- ✓ Increases positive effects of food and water (1% per level → +50% at Elite Level)
+	- ✓ Reduces duration of debuffs from items 		 (1% per level → -50% at Elite Level)
+		
+	- Elite level: 
+		✓ - No damage from exhaustion and dehydration
+		
+	Leveling
+		✓ - Consume food / water
 --]]
+
 class "CSkillMetabolism" : extends "CSkill"
 {
 	__init = function(self)
 		CSkill.__init(self)
+		EventBus:SubscribeMethod(self, self.OnItemUse, Events.ItemUse)
 	end;
+	
+	GetModifier = function(self)
+		return (self:Get() * 0.01)
+	end;
+	
+	OnItemUse = function(self, item)
+		
+		local section = item:section()
+	
+		-- Fetch food properties
+		local eat_thirstiness = SYS_GetParam(2, section, "eat_thirstiness") or 0
+		local eat_satiety = SYS_GetParam(2, section, "eat_satiety") or 0
+		
+		-- Additional energy restored
+		if (eat_satiety > 0) then
+			local change = eat_satiety * self:GetModifier()
+			db.actor:change_satiety(change)
+			
+			-- Raise Metabolism on consume
+			if (db.actor:cast_Actor():conditions():GetSatiety() < 0.99) then
+				self:AddBase(eat_satiety)
+			end
+		end
+		
+		-- Additional hydration restored
+		if (eat_thirstiness < 0) then
+			local scale = (1000 / actor_status_thirst.start_blur_4)
+			local change = -eat_thirstiness * scale * self:GetModifier()
+			CHydration.Add(change)
+			
+			-- Raise Metabolism on consume
+			if (CHydration.Get() < 0.99) then
+				self:AddBase(-eat_thirstiness * scale)
+			end
+		end
+		
+	end;
+
 }
 
+
 --[[
-	TODO
+	REFERENCE: https://escapefromtarkov.fandom.com/wiki/Strength
+	
+	- ✓ Increases jump height 	  			(0.4% per level → +20% at Elite Level)
+	- ✗ Increases carrying weight 			(0.6% per level → +30% at Elite Level)
+	- ✓ Increases melee strike power 		(0.6% per level → +30% at Elite Level)
+	- ✓ Increases movement and sprint speed (0.4% per level → +20% at Elite Level)
+	- ✗ Increases throw distance 			(0.4% per level → +20% at Elite Level)
+	- ✓ Reduces stamina drain while aiming 	(0.4% per level → +20% at Elite Level)
+	
+	Elite:
+		✗ - Equipped weapons don't add up to the weight of your character (not including weapons in backpacks)
+		✓ - 50% Chance to deal critical melee damage
+		
+	Leveling:
+		✓ - Using Melee weapons
+		✓ - Walk/sprint/jump while being overweight (showing a yellow number)
 --]]
+
+STRENGTH_MOD_MELEE = 0.006			-- +%/lvl of melee damage
+STRENGTH_MOD_SPEED = 0.004			-- +%/lvl of run/sprint speed
+STRENGTH_MOD_JUMP = 0.004			-- +%/lvl of jump height
+STRENGTH_MOD_STAMINA_AIM = 0.004	-- -%/lvl of stamina drain while aiming
+
+STRENGTH_ELITE_CRIT_MOD = 2			-- Melee crit damage multiplier
+STRENGTH_ELITE_CRIT_CHANCE = 0.5	-- Melee crit chance
+
+STRENGTH_LVL_PER_MELEE = 0.1				-- Level per melee hit
+STRENGTH_LVL_PER_OVERWEIGHT_STEP = 0.001	-- Level per step while overweight
+STRENGTH_LVL_PER_OVERWEIGHT_JUMP = 0.01		-- Level per jump while overweight
+
+STAMINA_DRAIN_ADS_STAND = -0.05
+STAMINA_DRAIN_ADS_CROUCH = -0.03
+STAMINA_DRAIN_ADS_PRONE = 0.00
+
 class "CSkillStrength" : extends "CSkill"
 {
 	__init = function(self)
 		CSkill.__init(self)
+		
+		self.update_last = 0
+		self.update_interval = 1000
+		
+		EventBus:SubscribeMethod(self, self.OnUpdate, Events.Update)
+		EventBus:SubscribeMethod(self, self.OnFootstep, Events.Footstep)
+		EventBus:SubscribeMethod(self, self.OnJump, Events.Jump)
+		EventBus:SubscribeMethod(self, self.OnMeleeStrike, Events.PlayerPreDamageMelee)
+	end;
+	
+	OnUpdate = function(self)
+	
+		local time_now = time_global()
+	
+		if (self.update_last == 0) then
+			self.update_last = time_now
+		end
+		
+		local time_passed = time_now  - self.update_last
+		
+		if (time_passed > self.update_interval) then
+	
+			--[[ 
+				Aiming down the sight reduces stamina
+				 - Standing: 5%/sec.  (STAMINA_DRAIN_ADS_STAND)
+				 - Crouching: 3%/sec. (STAMINA_DRAIN_ADS_CROUCH)
+				 - Proning: no reduce (STAMINA_DRAIN_ADS_PRONE)
+			--]]
+			if (CAiming.is_ads) then
+			
+				local seconds = time_passed / 1000
+			
+				local mc_accel = IsMoveState("mcAccel")
+				local mc_crouch = IsMoveState("mcCrouch")
+			
+				local is_proning = (mc_crouch) and (mc_accel)
+				local is_crouching =  (mc_crouch) and (not mc_accel)
+				local is_standing = (not is_crouching) and (not is_proning)
+				
+				local skill_modifier = (1.0 - self:GetStaminaAimModifier())
+				
+				if (is_proning) then
+					db.actor:change_power(STAMINA_DRAIN_ADS_PRONE * seconds * skill_modifier)
+				elseif (is_crouching) then
+					db.actor:change_power(STAMINA_DRAIN_ADS_CROUCH * seconds * skill_modifier)
+				else
+					db.actor:change_power(STAMINA_DRAIN_ADS_STAND * seconds * skill_modifier)
+				end
+			end
+			
+			self.update_last = time_now
+		end
+	
+	end;
+	
+	OnMeleeStrike = function(self, target, hit, bone_id, flags)
+	
+		-- Melee hit power is modified by "Strength" skill
+		hit.power = hit.power * (1.0 + self:GetMeleeModifier())
+		
+		-- Elite "Strength" - chance for critical hit
+		if (self:IsElite()) and (math.random() <= STRENGTH_ELITE_CRIT_CHANCE) then
+			hit.power = hit.power * STRENGTH_ELITE_CRIT_MOD
+		end
+		
+		-- Level "Strength" on each melee hit
+		self:AddBase(STRENGTH_LVL_PER_MELEE)			
+	end;
+	
+	OnJump = function(self)
+		-- Level "Strength" on jumping overweight
+		local overweight = GetOverweight(true)
+		if (overweight > 0) then
+			self:AddBase(STRENGTH_LVL_PER_OVERWEIGHT_JUMP)
+		end
+	end;
+	
+	OnFootstep = function(self)
+		-- Level "Strength" on walking overweight
+		local overweight = GetOverweight(true)
+		if (overweight > 0) then
+			self:AddBase(STRENGTH_LVL_PER_OVERWEIGHT_STEP)
+		end
+	end;
+	
+	GetMeleeModifier = function(self)
+		return (self:Get() * STRENGTH_MOD_MELEE)
+	end;
+	
+	GetSpeedModifier = function(self)
+		return (self:Get() * STRENGTH_MOD_SPEED)
+	end;
+	
+	GetJumpModifier = function(self)
+		return (self:Get() * STRENGTH_MOD_JUMP)
+	end;
+	
+	GetStaminaAimModifier = function(self)
+		return (self:Get() * STRENGTH_MOD_STAMINA_AIM)
 	end;
 	
 	OnChanged = function(self, value, is_bonus)
+	
+		-- Increase jump height
+		CMovement.AddSpeedJump("skill_strength", 1.0 + self:GetJumpModifier())
 		
-		-- Every time skill points are gained for Strength, 
-		-- 25% of the amount is gained for Health.
-		if (value > 0) and (not is_bonus) then
-			Body.skills.health:AddBase(0.25 * value)
-		end
-		
+		-- Increase run/sprint speed 
+		CMovement.AddSpeed("skill_strength", 1.0 + self:GetSpeedModifier())
+		CMovement.AddSpeedSprint("skill_strength", 1.0 + self:GetSpeedModifier())		
 	end;
 }
 
+
 --[[
-	TODO
+	REFERENCE: https://escapefromtarkov.fandom.com/wiki/Stress_Resistance
+	
+	- ✓ Reduces pain shock chance (1% per level → -50% at Elite Level)
+	- ✓ Reduces tremor oscillation (1.2% per level → -60% at Elite Level)
+	
+	Elite level: 
+		✓ - Berserk mode access
+		
+	Leveling
+		✓ - 0.033 points/sec for being low on health points
+		✓ - 0.33 points for having the "Pain" debuff
 --]]
+
+STRESS_MOD_PAIN = 0.01
+STRESS_MOD_TREMOR = 0.012
+
+STRESS_LVL_LOWHP_PERCENT = 0.2
+STRESS_LVL_LOWHP_RATE = 0.033
+
+STRESS_ELITE_DURATION = 10000		-- 10 sec.
+STRESS_ELITE_COOLDOWN = 300000		-- 5 min.
+
 class "CSkillStressResistance" : extends "CSkill"
 {
 	__init = function(self)
 		CSkill.__init(self)
+		
+		self.update_last = 0
+		self.update_interval = 1000
+		
+		-- Cooldown for "Berserk" buff
+		self.berserk_cooldown = 0	
+		
+		EventBus:SubscribeMethod(self, self.OnUpdate, Events.Update)
+		EventBus:SubscribeMethod(self, self.OnLowHealth, Events.PlayerHealthChanged)
 	end;
 	
+	GetPainReduceChance = function(self)
+		return (self:Get() * STRESS_MOD_PAIN)
+	end;
+	
+	GetTremorPowerModifier = function(self)
+		return (self:Get() * STRESS_MOD_TREMOR)
+	end;
+	
+	OnUpdate = function(self)
+	
+		local time_now = time_global()
+	
+		if (self.update_last == 0) then
+			self.update_last = time_now
+		end
+		
+		local time_passed = time_now  - self.update_last
+		
+		-- Add additional regeneration for hydration/energy as a percent
+		-- from default decay rate, based on Health Skill level.	
+		if (time_passed > self.update_interval) and 
+		   (Body.conditions.health:GetPercent() < STRESS_LVL_LOWHP_PERCENT) 
+		then
+			self:AddBase(time_passed / 1000 * STRESS_LVL_LOWHP_RATE)
+			self.update_last = time_now
+		end
+		
+		-- Reduce "Berserk" cooldown
+		self.berserk_cooldown = max(self.berserk_cooldown - time_passed, 0)
+	
+	end;
+	
+	OnLowHealth = function(self, percent)
+		-- Elite "Stress Resistance" allows to enter "Berserk" state on low-hp.
+		if (percent < 0.2) and 
+		   (self:IsElite()) and
+		   (self.berserk_cooldown == 0) 
+		then
+			self.berserk_cooldown = STRESS_ELITE_COOLDOWN
+			Body:AddBuff(CBuffBerserk, nil, STRESS_ELITE_DURATION)
+		end
+		
+	end;
 }
+
 
 --[[
 	REFERENCE: https://escapefromtarkov.fandom.com/wiki/Vitality
 	
-	- Reduces bleeding chance (1.2% per level → -60% at 51 Level)
-	- 50+ level: Bleedings stop on their own (20 sec.)
-	- 50+ level: Fresh wounds have halved durations
+	- ✓ Reduces bleeding chance (1.2% per level → -60% at Elite Level)
+   
+    Elite level:
+		✓ - Bleedings stop on their own (20 sec.)
+		✓ - Fresh wounds have halved durations
 		
+	Leveling:
+		✓ - 0.01 points for every 5 damage taken (0.002 / 1 dmg)
+		✓ - 0.3 points for getting bleeding
 --]]
+
+VITALITY_MOD_BLEED = 0.012
+
+VITALITY_ELITE_MOD_WOUND = 0.5
+
+VITALITY_LVL_PER_DAMAGE = 0.002
+VITALITY_LVL_PER_BLEED = 0.3
+
 class "CSkillVitality" : extends "CSkill"
 {
 	__init = function(self)
 		CSkill.__init(self)
+		EventBus:SubscribeMethod(self, self.OnBuffAdded, Events.BuffAdded)
+		EventBus:SubscribeMethod(self, self.OnHealthChanged, Events.PlayerHealthChanged)
 	end;
 	
-	GetBleedChanceReduce = function(self)
-		return self:Get() * 0.012
-	end;
-	
-	OnChanged = function(self, value, is_bonus)
-		
-		-- Every time skill points are gained for Vitality, 
-		-- 25% of the amount is gained for Health.
-		if (value > 0) and (not is_bonus) then
-			Body.skills.health:AddBase(0.25 * value)
+	OnHealthChanged = function(self, percent, diff)
+		-- Level "Vitality" per damage taken
+		if (diff > 0) then			
+			self:AddBase(diff * VITALITY_LVL_PER_DAMAGE)
 		end
+	end;
+	
+	OnBuffAdded = function(self, buff)
 		
+		-- Elite "Vitality" - fresh wounds have reduced duration
+		if (buff.ICON == "fresh_wound") and (self:IsElite()) then
+			buff.duration = buff.duration * VITALITY_ELITE_MOD_WOUND
+		end
+	
+		-- Level "Vitality" per bleeding
+		if (buff.ICON == "bleed_light") or
+		   (buff.ICON == "bleed_heavy")
+		then
+			self:AddBase(VITALITY_LVL_PER_BLEED)
+		end
+	end;
+	
+	GetBleedChanceModifier = function(self)
+		return (self:Get() * VITALITY_MOD_BLEED)
 	end;
 }
