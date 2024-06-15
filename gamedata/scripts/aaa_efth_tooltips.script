@@ -174,7 +174,7 @@ function ui_item.build_desc_footer(obj, sec, str)
 		footer:AddTitle(gc("efth_effects"))
 			
 		if (item.cache.remove_pain > 0) then
-			local duration = item.cache.remove_pain * (1.0 + Body.skills.immunity:GetPainkillerDurationModifier())
+			local duration = item.cache.remove_pain * (1.0 + Body.skills.immunity:GetPainkillerModifier())
 			local builder = CStringBuilder()
 			builder:Append(gc("efth_adds"))
 			builder:Append(gc("efth_painkiller"), Colors.TOOLTIP_GREEN) 
