@@ -132,7 +132,7 @@ class "CItem"
 	UseBooster = function(self)
 			
 		if (self.cache.remove_pain > 0) then 
-			Body:AddBuff(CBuffPainkiller, self.section, duration) 
+			Body:AddBuff(CBuffPainkiller, self.section, self.cache.remove_pain) 
 		end
 		if (self.cache.remove_concussion > 0) then 
 			Body:AddBuff(CBuffConcussionHeal, self.section, self.cache.remove_concussion) 
