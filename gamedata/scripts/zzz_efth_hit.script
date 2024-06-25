@@ -108,6 +108,7 @@ end
 
 ANOMALIES_LIMBS = {
 	[EHitTypes.Burn.ID] 		= { "torso", "stomach", "arm_left", "arm_right", "leg_left", "leg_right" },	-- Thermal
+	[EHitTypes.LightBurn.ID] 	= { "torso", "stomach", "arm_left", "arm_right", "leg_left", "leg_right" },	-- Thermal
 	[EHitTypes.Strike.ID] 		= { "torso", "stomach", "arm_left", "arm_right", "leg_left", "leg_right" },	-- Gravitational
 	[EHitTypes.Wound.ID] 		= { "torso", "stomach", "arm_left", "arm_right", "leg_left", "leg_right" },	-- Gravitational
 	[EHitTypes.Electrical.ID] 	= { "torso", "stomach", "arm_left", "arm_right", "leg_left", "leg_right" },	-- Electrical

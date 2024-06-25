@@ -165,7 +165,10 @@ end
 
 
 function ChooseRandom(tbl)
-	return tbl[math.random(1, #tbl)]
+	if (tbl) then
+		return tbl[math.random(1, #tbl)]
+	end
+	return nil
 end
 
 -- Sorted iterator - iterate table base on provided sorting.

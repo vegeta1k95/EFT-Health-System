@@ -117,8 +117,8 @@ class "CEventBus"
 		end)
 	end;
 	
-	UnsubscribeMethod = function(self, cls, method, event)
-	
+	UnsubscribeMethod = function(self, object, method, event)
+		-- TODO
 	end;
 	
 	-- =======================================================
